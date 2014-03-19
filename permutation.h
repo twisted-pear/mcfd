@@ -1,0 +1,12 @@
+#ifndef __PERMUTATION_H__
+#define __PERMUTATION_H__
+
+#include <stdint.h>
+
+typedef struct permutation_t {
+	size_t width;
+	void (*f)(struct permutation_t *, unsigned char *);
+	void *internal;
+} permutation;
+
+#endif /* __PERMUTATION_H__ */
