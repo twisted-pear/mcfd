@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "sponge.h"
+#include "common.h"
 
 struct internals {
 	unsigned char *state;
@@ -75,20 +76,6 @@ void sponge_free(sponge *sp)
 	free(sp);
 }
 
-static void xor_and_permute_block(sponge *sp, const unsigned char *input)
-{
-	assert(sp != NULL && input != NULL);
-
-	size_t i;
-	struct internals *internal = (struct internals *) sp->internal;
-
-	for (i = 0; i < sp->rate / 8; i++) {
-		internal->state[i] ^= input[i];
-	}
-
-	sp->f->f(sp->f, internal->state);
-}
-
 int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit_len)
 {
 	assert(sp != NULL && input != NULL);
@@ -109,7 +96,7 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 		bits_needed = sp->rate - internal->remaining_bits;
 		memcpy(internal->remaining + internal->remaining_bits / 8, input, bits_needed / 8);
 
-		xor_and_permute_block(sp, internal->remaining);
+		xor_and_permute_block(internal->state, sp->rate, sp->f, internal->remaining);
 	}
 
 	/* Absorb full blocks in the input. */
@@ -117,7 +104,7 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 	const unsigned char *begin_full = input + bits_needed / 8;
 
 	while (remaining_bit_len >= sp->rate) {
-		xor_and_permute_block(sp, begin_full);
+		xor_and_permute_block(internal->state, sp->rate, sp->f, begin_full);
 
 		remaining_bit_len -= sp->rate;
 		begin_full += sp->rate / 8;
@@ -138,7 +125,7 @@ int sponge_absorb_final(sponge *sp)
 
 	/* Apply padding and add last block. */
 	while (sp->p->pf(sp->p, internal->remaining, internal->remaining_bits)) {
-		xor_and_permute_block(sp, internal->remaining);
+		xor_and_permute_block(internal->state, sp->rate, sp->f, internal->remaining);
 	}
 
 	memset(internal->remaining, 0, sp->rate / 8);
