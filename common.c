@@ -18,7 +18,7 @@ void xor_and_permute_block(unsigned char *state, const size_t rate, permutation 
 	size_t remaining_bits = rate % 8;
 	if (remaining_bits != 0) {
 		unsigned char last_byte = input[i];
-		last_byte &= ~((1 << (8 - remaining_bits)) - 1);
+		last_byte &= (1 << remaining_bits) - 1;
 		state[i] ^= last_byte;
 	}
 
