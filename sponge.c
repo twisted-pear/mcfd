@@ -20,6 +20,10 @@ sponge *sponge_init(permutation *f, pad *p, const size_t rate)
 		return NULL;
 	}
 
+	if (rate > f->width) {
+		return NULL;
+	}
+
 	if (rate % 8 != 0 || f->width % 8 != 0) {
 		return NULL;
 	}
@@ -44,7 +48,7 @@ sponge *sponge_init(permutation *f, pad *p, const size_t rate)
 
 	struct internals *internal = (struct internals *) sp->internal;
 
-	internal->state = calloc(f->width, 1);
+	internal->state = calloc(f->width / 8, 1);
 	if (internal->state == NULL) {
 		free(internal);
 		free(sp);
@@ -142,12 +146,9 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 		return 1;
 	}
 
-	size_t i;
 	struct internals *internal = (struct internals *) sp->internal;
 
-	for (i = 0; i < output_bit_len / 8; i++) {
-		output[i] = internal->state[i];
-	}
+	memcpy(output, internal->state, output_bit_len / 8);
 
 	return 0;
 }
