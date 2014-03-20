@@ -54,7 +54,11 @@ void testDuplexOneInstance(FILE *f, unsigned int rate, unsigned int capacity)
             //delimitedSigmaEnd = 0x01;
 
         memset(Z, filler, sizeof(Z));
-	duplex_duplexing(duplex, sigma, sigmaBitLength, Z, ZByteLen * 8);
+	size_t out_bit_len = (ZByteLen * 8 > rate) ? rate : ZByteLen * 8;
+	duplex_duplexing(duplex, sigma, sigmaBitLength, Z, out_bit_len);
+	if (ZByteLen * 8 > rate) {
+		Z[ZByteLen - 1] >>= 8 - (out_bit_len % 8);
+	}
         //Keccak_Duplexing(&duplex, sigma, sigmaBitLength/8, Z, ZByteLen, delimitedSigmaEnd);
 
         for(i=0; i<ZByteLen; i++)
@@ -71,7 +75,11 @@ void testDuplexOneInstance(FILE *f, unsigned int rate, unsigned int capacity)
         unsigned char filler = 0x33 + sigmaBitLength;
 
         memset(Z, filler, sizeof(Z));
-	duplex_duplexing(duplex, 0, 0, Z, ZByteLen * 8);
+	size_t out_bit_len = (ZByteLen * 8 > rate) ? rate : ZByteLen * 8;
+	duplex_duplexing(duplex, 0, 0, Z, out_bit_len);
+	if (ZByteLen * 8 > rate) {
+		Z[ZByteLen - 1] >>= 8 - (out_bit_len % 8);
+	}
         //Keccak_Duplexing(&duplex, 0, 0, Z, ZByteLen, 0x01);
 
         for(i=0; i<ZByteLen; i++)
@@ -99,9 +107,7 @@ void testDuplex()
     unsigned int rate;
     
     f = fopen("TestDuplex.txt", "w");
-    rate = 16;
-    testDuplexOneInstance(f, rate, 1600-rate);
-    //for(rate = 3; rate <= 1600-2; rate += (rate < 68) ? 1 : ((rate < 220) ? 5 : 25))
-    //    testDuplexOneInstance(f, rate, 1600-rate);
+    for(rate = 3; rate <= 1600-2; rate += (rate < 68) ? 1 : ((rate < 220) ? 5 : 25))
+        testDuplexOneInstance(f, rate, 1600-rate);
     fclose(f);
 }
