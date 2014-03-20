@@ -11,6 +11,7 @@ extern void testDuplex(void);
 
 int main(void)
 {
+	/* TODO: test for mem leaks */
 	testDuplex();
 	return genKAT_main();
 }
