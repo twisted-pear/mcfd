@@ -23,8 +23,7 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 		return NULL;
 	}
 
-	/* TODO: remove the (rate % 8 == 0) requirement */
-	if (rate % 8 != 0 || f->width % 8 != 0) {
+	if (f->width % 8 != 0) {
 		return NULL;
 	}
 
@@ -105,10 +104,10 @@ int duplex_duplexing(duplex *dp, const unsigned char *input, const size_t input_
 	if (dp->p->pf(dp->p, internal->remaining, input_bit_len) == 0) {
 		return 1;
 	}
+	xor_and_permute_block(internal->state, dp->rate, dp->f, internal->remaining);
 	if (dp->p->pf(dp->p, internal->remaining, input_bit_len) != 0) {
 		return 1;
 	}
-	xor_and_permute_block(internal->state, dp->rate, dp->f, internal->remaining);
 
 	memcpy(output, internal->state, output_bit_len / 8);
 
@@ -117,7 +116,7 @@ int duplex_duplexing(duplex *dp, const unsigned char *input, const size_t input_
 	size_t last_idx = output_bit_len / 8;
 	if (remaining_bits != 0) {
 		unsigned char last_byte = internal->state[last_idx];
-		last_byte &= ~((1 << (8 - remaining_bits)) - 1);
+		last_byte <<= 8 - remaining_bits;
 		output[last_idx] = last_byte;
 	}
 
