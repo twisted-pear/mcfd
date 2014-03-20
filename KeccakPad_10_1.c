@@ -13,6 +13,7 @@ enum {
 
 pad *keccakPad_10_1_init(const size_t rate)
 {
+	/* TODO: remove the (rate % 8 == 0) requirement */
 	if (rate == 0 || rate % 8 != 0) {
 		return NULL;
 	}
