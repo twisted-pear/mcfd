@@ -10,6 +10,7 @@ struct internals {
 	unsigned char *state;
 	unsigned char *remaining;
 	size_t remaining_bits;
+	enum { PHASE_ABSORB = 0, PHASE_SQUEEZE } phase;
 };
 
 sponge *sponge_init(permutation *f, pad *p, const size_t rate)
@@ -65,6 +66,8 @@ sponge *sponge_init(permutation *f, pad *p, const size_t rate)
 
 	internal->remaining_bits = 0;
 
+	internal->phase = PHASE_ABSORB;
+
 	return sp;
 }
 
@@ -87,6 +90,11 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 	struct internals *internal = (struct internals *) sp->internal;
 
 	assert(internal->remaining_bits < sp->rate);
+
+	/* Only absorb in absorb phase. */
+	if (internal->phase != PHASE_ABSORB) {
+		return 1;
+	}
 
 	/* Don't allow absorbs with partial bytes, except at the end.
 	 * Rationale: The reference implementation doesn't allow this either (and it's easier). */
@@ -127,6 +135,11 @@ int sponge_absorb_final(sponge *sp)
 
 	struct internals *internal = (struct internals *) sp->internal;
 
+	/* Only absorb in absorb phase. */
+	if (internal->phase != PHASE_ABSORB) {
+		return 1;
+	}
+
 	/* Apply padding and add last block. */
 	while (sp->p->pf(sp->p, internal->remaining, internal->remaining_bits)) {
 		xor_and_permute_block(internal->state, sp->rate, sp->f, internal->remaining);
@@ -135,6 +148,9 @@ int sponge_absorb_final(sponge *sp)
 	memset(internal->remaining, 0, sp->rate / 8);
 	internal->remaining_bits = 0;
 
+	/* Switch to squeezing. */
+	internal->phase = PHASE_SQUEEZE;
+
 	return 0;
 }
 
@@ -142,11 +158,16 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 {
 	assert(sp != NULL && output != NULL);
 
-	if (output_bit_len > sp->f->width || output_bit_len % 8 != 0) {
+	struct internals *internal = (struct internals *) sp->internal;
+
+	/* Only squeeze in squeeze phase. */
+	if (internal->phase != PHASE_SQUEEZE) {
 		return 1;
 	}
 
-	struct internals *internal = (struct internals *) sp->internal;
+	if (output_bit_len > sp->f->width || output_bit_len % 8 != 0) {
+		return 1;
+	}
 
 	memcpy(output, internal->state, output_bit_len / 8);
 
