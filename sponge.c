@@ -165,11 +165,28 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 		return 1;
 	}
 
-	if (output_bit_len > sp->f->width || output_bit_len % 8 != 0) {
-		return 1;
+	size_t bytes_needed = output_bit_len / 8;
+	size_t rate_size_bytes = sp->rate / 8;
+
+	unsigned char *current_out = output;
+	while (bytes_needed >= rate_size_bytes) {
+		/* This works because (rate % 8 == 0). */
+		memcpy(current_out, internal->state, rate_size_bytes);
+		sp->f->f(sp->f, internal->state);
+
+		bytes_needed -= rate_size_bytes;
+		current_out += rate_size_bytes;
 	}
 
-	memcpy(output, internal->state, output_bit_len / 8);
+	memcpy(current_out, internal->state, bytes_needed);
+	current_out += bytes_needed;
+	
+	size_t remaining_bits = output_bit_len % 8;
+	if (remaining_bits != 0) {
+		unsigned char last_byte = internal->state[bytes_needed];
+		last_byte <<= 8 - remaining_bits;
+		*current_out = last_byte;
+	}
 
 	return 0;
 }
