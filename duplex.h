@@ -10,6 +10,7 @@ typedef struct duplex_t {
 	permutation *f;
 	pad *p;
 	size_t rate;
+	size_t max_duplex_rate;
 	void *internal;
 } duplex;
 

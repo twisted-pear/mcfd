@@ -15,7 +15,11 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 {
 	assert(f != NULL && p != NULL);
 
-	if (rate == 0 || f->width == 0) {
+	if (f->width == 0) {
+		return NULL;
+	}
+
+	if (f->width % 8 != 0) {
 		return NULL;
 	}
 
@@ -23,7 +27,7 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 		return NULL;
 	}
 
-	if (f->width % 8 != 0) {
+	if (rate <= p->min_bit_len) {
 		return NULL;
 	}
 
@@ -39,6 +43,7 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 	dp->f = f;
 	dp->p = p;
 	dp->rate = rate;
+	dp->max_duplex_rate = rate - p->min_bit_len;
 
 	dp->internal = malloc(sizeof(struct internals));
 	if (dp->internal == NULL) {
@@ -87,7 +92,7 @@ int duplex_duplexing(duplex *dp, const unsigned char *input, const size_t input_
 
 	struct internals *internal = (struct internals *) dp->internal;
 
-	if (input_bit_len > dp->rate - dp->p->min_bit_len) {
+	if (input_bit_len > dp->max_duplex_rate) {
 		return 1;
 	}
 
