@@ -108,11 +108,11 @@ int duplex_duplexing(duplex *dp, const unsigned char *input, const size_t input_
 
 	/* Apply padding and add last block. */
 	if (dp->p->pf(dp->p, internal->remaining, input_bit_len) == 0) {
-		return 1;
+		assert(0);
 	}
 	xor_and_permute_block(internal->state, dp->rate, dp->f, internal->remaining);
 	if (dp->p->pf(dp->p, internal->remaining, input_bit_len) != 0) {
-		return 1;
+		assert(0);
 	}
 
 	memcpy(output, internal->state, output_bit_len / 8);
