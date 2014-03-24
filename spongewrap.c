@@ -16,7 +16,9 @@ static int duplex_with_frame_bit(spongewrap *w, const unsigned char *in,
 		const size_t in_byte_len, unsigned char *out,
 		const size_t out_byte_len, bool frame_bit)
 {
-	assert(w != NULL && in != NULL);
+	assert(w != NULL);
+	assert(in != NULL || in_byte_len == 0);
+	assert(out != NULL || out_byte_len == 0);
 	assert(in_byte_len <= w->block_size);
 
 	struct internals *internal = (struct internals *) w->internal;
@@ -29,7 +31,8 @@ static int duplex_with_frame_bit(spongewrap *w, const unsigned char *in,
 
 	internal->buf[in_byte_len] = frame_bit ? 0x80 : 0x00;
 
-	return duplex_duplexing(internal->dp, internal->buf, (in_byte_len + 1) * 8, out, out_byte_len * 8);
+	return duplex_duplexing(internal->dp, internal->buf, (in_byte_len + 1) * 8, out,
+			out_byte_len * 8);
 }
 
 spongewrap *spongewrap_init(permutation *f, pad *p, const size_t rate,
@@ -88,7 +91,23 @@ spongewrap *spongewrap_init(permutation *f, pad *p, const size_t rate,
 	w->block_size = block_size;
 	w->internal = internal;
 
-	/* TODO: put the key in */
+	size_t bytes_remaining = key_byte_len;
+
+	const unsigned char *k = key;
+	while (bytes_remaining > block_size) {
+		if (duplex_with_frame_bit(w, k, block_size, NULL, 0, true) != 0) {
+			spongewrap_free(w);
+			return NULL;
+		}
+
+		bytes_remaining -= block_size;
+		k += block_size;
+	}
+
+	if (duplex_with_frame_bit(w, k, bytes_remaining, NULL, 0, false) != 0) {
+		spongewrap_free(w);
+		return NULL;
+	}
 
 	return w;
 }
