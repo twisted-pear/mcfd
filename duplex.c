@@ -74,6 +74,7 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 void duplex_free(duplex *dp)
 {
 	assert(dp != NULL);
+	assert(dp->internal != NULL);
 
 	struct internals *internal = (struct internals *) dp->internal;
 	free(internal->state);

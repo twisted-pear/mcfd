@@ -74,6 +74,7 @@ sponge *sponge_init(permutation *f, pad *p, const size_t rate)
 void sponge_free(sponge *sp)
 {
 	assert(sp != NULL);
+	assert(sp->internal != NULL);
 
 	struct internals *internal = (struct internals *) sp->internal;
 	free(internal->state);
