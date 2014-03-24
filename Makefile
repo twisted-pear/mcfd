@@ -7,7 +7,7 @@ TEST_REF= test_expected/
 
 LIBS	=
 
-S_COMM	= sponge.c duplex.c common.c main.c genKAT.c KeccakNISTInterface.c testDuplex.c
+S_COMM	= sponge.c duplex.c common.c spongewrap.c main.c genKAT.c KeccakNISTInterface.c testDuplex.c
 S_PERM	= KeccakF-1600.c 
 S_PAD	= KeccakPad_10_1.c 
 
