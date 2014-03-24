@@ -17,7 +17,7 @@ O_PAD	= $(S_PAD:.c=.o)
 
 OBJS	= $(O_COMM) $(O_PERM) $(O_PAD)
 
-CFLAGS	= -Wall -g
+CFLAGS	= -Wall -pedantic -std=c99 -g
 LDFLAGS	=
 
 all: $(BINS)
