@@ -8,10 +8,16 @@
 
 extern int genKAT_main(void);
 extern void testDuplex(void);
+extern int testSpongeWrap(void);
 
 int main(void)
 {
 	/* TODO: test for mem leaks */
 	testDuplex();
+
+	if (testSpongeWrap() != 0) {
+		return 1;
+	}
+
 	return genKAT_main();
 }
