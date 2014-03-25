@@ -59,7 +59,7 @@ spongewrap *spongewrap_init(permutation *f, pad *p, const size_t rate,
 	assert(f != NULL && p != NULL);
 	assert(key != NULL);
 
-	if (block_size % 8 != 0 || block_size == 0) {
+	if (block_size == 0) {
 		return NULL;
 	}
 
@@ -78,7 +78,7 @@ spongewrap *spongewrap_init(permutation *f, pad *p, const size_t rate,
 		return NULL;
 	}
 
-	if (block_size >= dp->max_duplex_rate) {
+	if (block_size * 8 >= dp->max_duplex_rate) {
 		free(w);
 		duplex_free(dp);
 		return NULL;
@@ -130,9 +130,7 @@ void spongewrap_free(spongewrap *w)
 
 	struct internals *internal = (struct internals *) w->internal;
 
-	duplex *dp = (duplex *) w->internal;
-	duplex_free(dp);
-
+	duplex_free(internal->dp);
 	free(internal->buf);
 	free(internal);
 
