@@ -5,6 +5,7 @@
 #include <assert.h>
 
 #include "spongewrap.h"
+#include "common.h"
 #include "duplex.h"
 
 struct internals {
@@ -232,7 +233,7 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 
 	size_t i;
 	size_t block_size = w->block_size;
-	int ret = 1;
+	int ret = 0;
 
 	/* Duplex header */
 	size_t a_remaining = a_byte_len;
@@ -287,9 +288,7 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 	size_t t_next_len = t_byte_len < block_size ? t_byte_len : block_size;
 	duplex_with_frame_bit(w, b_cur, c_remaining, buf, t_next_len, false);
 
-	if (memcmp(t, buf, t_next_len) != 0) {
-		goto fail;
-	}
+	ret |= const_cmp(t, buf, t_next_len);
 
 	/* Check the remainder of the tag. */
 	size_t t_remaining = t_byte_len - t_next_len;
@@ -297,9 +296,7 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 	while (t_remaining > block_size) {
 		duplex_with_frame_bit(w, NULL, 0, buf, block_size, false);
 
-		if (memcmp(t_cur, buf, block_size) != 0) {
-			goto fail;
-		}
+		ret |= const_cmp(t_cur, buf, block_size);
 
 		t_remaining -= block_size;
 		t_cur += block_size;
@@ -308,25 +305,31 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 	if (t_remaining != 0) {
 		duplex_with_frame_bit(w, NULL, 0, buf, t_remaining, false);
 
-		if (memcmp(t_cur, buf, t_remaining) != 0) {
-			goto fail;
-		}
+		ret |= const_cmp(t_cur, buf, t_remaining);
 	}
 
-	ret = 0;
-	goto done;
+	assert(ret == 1 || ret == 0);
 
-fail:
-	/* The computed tag was invalid.
-	 * Note that w is useless now. */
-	ret = 1;
-
-	/* Destroy any plaintext we produced to make sure the caller doesn't use it. */
-	memset(b, 0, c_byte_len);
-
-done:
 	/* Just in case. */
 	memset(buf, 0, block_size + 1);
+
+	/* If ret == 1 then mask = 0xFF. */
+	unsigned char mask = 0;
+	for (i = 0; i < sizeof(mask) * 8; i++) {
+		mask |= (ret << i);
+	}
+
+	assert(ret == 0 || mask == 0xFF);
+	assert(ret == 1 || mask == 0x00);
+	assert(mask == 0x00 || mask == 0xFF);
+
+	/* If the computed tag was invalid, destroy any plaintext we produced to make
+	 * sure the caller doesn't use it.
+	 * Note that in this case w is useless from now on. */
+	mask = ~mask;
+	for (i = 0; i < c_byte_len; i++) {
+		b[i] &= mask;
+	}
 
 	return ret;
 }
