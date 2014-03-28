@@ -9,6 +9,7 @@
 struct internals {
 	unsigned char *state;
 	unsigned char *remaining;
+	size_t width;
 };
 
 duplex *duplex_init(permutation *f, pad *p, const size_t rate)
@@ -68,6 +69,8 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 		return NULL;
 	}
 
+	internal->width = f->width;
+
 	return dp;
 }
 
@@ -77,8 +80,13 @@ void duplex_free(duplex *dp)
 	assert(dp->internal != NULL);
 
 	struct internals *internal = (struct internals *) dp->internal;
+
+	memset(internal->state, 0, internal->width / 8);
 	free(internal->state);
+
+	memset(internal->remaining, 0, (dp->rate + 7) / 8);
 	free(internal->remaining);
+
 	free(internal);
 
 	free(dp);

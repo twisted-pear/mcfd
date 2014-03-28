@@ -10,6 +10,7 @@ struct internals {
 	unsigned char *state;
 	unsigned char *remaining;
 	size_t remaining_bits;
+	size_t width;
 	enum { PHASE_ABSORB = 0, PHASE_SQUEEZE } phase;
 };
 
@@ -66,6 +67,8 @@ sponge *sponge_init(permutation *f, pad *p, const size_t rate)
 
 	internal->remaining_bits = 0;
 
+	internal->width = f->width;
+
 	internal->phase = PHASE_ABSORB;
 
 	return sp;
@@ -77,8 +80,15 @@ void sponge_free(sponge *sp)
 	assert(sp->internal != NULL);
 
 	struct internals *internal = (struct internals *) sp->internal;
+
+	memset(internal->state, 0, internal->width / 8);
 	free(internal->state);
+
+	memset(internal->remaining, 0, sp->rate / 8);
 	free(internal->remaining);
+
+	internal->remaining_bits = 0;
+
 	free(internal);
 
 	free(sp);

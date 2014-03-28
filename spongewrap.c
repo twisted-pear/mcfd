@@ -132,7 +132,10 @@ void spongewrap_free(spongewrap *w)
 	struct internals *internal = (struct internals *) w->internal;
 
 	duplex_free(internal->dp);
+
+	memset(internal->buf, 0, w->block_size + 1);
 	free(internal->buf);
+
 	free(internal);
 
 	free(w);
