@@ -19,6 +19,8 @@ spongewrap *spongewrap_init(permutation *f, pad *p, const size_t rate,
 		const size_t key_byte_len);
 void spongewrap_free(spongewrap *w);
 
+int spongewrap_rekey(spongewrap *w, const unsigned char *key, const size_t key_byte_len);
+
 int spongewrap_wrap(spongewrap *w, const unsigned char *a, const size_t a_byte_len,
 		const unsigned char *b, const size_t b_byte_len, unsigned char *c,
 		unsigned char *t, const size_t t_byte_len);

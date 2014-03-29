@@ -53,6 +53,27 @@ static void duplex_with_frame_bit(spongewrap *w, const unsigned char *in,
 	}
 }
 
+static void input_key(spongewrap *w, const unsigned char *key, const size_t key_byte_len)
+{
+	assert(w != NULL);
+	assert(key != NULL);
+	assert(key_byte_len != 0);
+
+	size_t block_size = w->block_size;
+
+	size_t bytes_remaining = key_byte_len;
+
+	const unsigned char *k = key;
+	while (bytes_remaining > block_size) {
+		duplex_with_frame_bit(w, k, block_size, NULL, 0, true);
+
+		bytes_remaining -= block_size;
+		k += block_size;
+	}
+
+	duplex_with_frame_bit(w, k, bytes_remaining, NULL, 0, false);
+}
+
 spongewrap *spongewrap_init(permutation *f, pad *p, const size_t rate,
 		const size_t block_size, const unsigned char *key,
 		const size_t key_byte_len)
@@ -109,17 +130,7 @@ spongewrap *spongewrap_init(permutation *f, pad *p, const size_t rate,
 	w->block_size = block_size;
 	w->internal = internal;
 
-	size_t bytes_remaining = key_byte_len;
-
-	const unsigned char *k = key;
-	while (bytes_remaining > block_size) {
-		duplex_with_frame_bit(w, k, block_size, NULL, 0, true);
-
-		bytes_remaining -= block_size;
-		k += block_size;
-	}
-
-	duplex_with_frame_bit(w, k, bytes_remaining, NULL, 0, false);
+	input_key(w, key, key_byte_len);
 
 	return w;
 }
@@ -139,6 +150,38 @@ void spongewrap_free(spongewrap *w)
 	free(internal);
 
 	free(w);
+}
+
+int spongewrap_rekey(spongewrap *w, const unsigned char *key, const size_t key_byte_len)
+{
+	assert(w != NULL);
+	assert(w->internal != NULL);
+	assert(key != NULL);
+
+	if (key_byte_len == 0) {
+		return 1;
+	}
+
+	struct internals *internal = (struct internals *) w->internal;
+
+	duplex *old_dp = internal->dp;
+
+	duplex *dp = duplex_init(w->f, w->p, w->rate);
+	if (dp == NULL) {
+		return 1;
+	}
+
+	if (w->block_size * 8 >= dp->max_duplex_rate) {
+		duplex_free(dp);
+		return 1;
+	}
+
+	internal->dp = dp;
+	duplex_free(old_dp);
+
+	input_key(w, key, key_byte_len);
+
+	return 0;
 }
 
 int spongewrap_wrap(spongewrap *w, const unsigned char *a, const size_t a_byte_len,
