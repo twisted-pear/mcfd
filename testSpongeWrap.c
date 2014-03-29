@@ -6,6 +6,8 @@
 #include "KeccakPad_10_1.h"
 #include "spongewrap.h"
 
+#define DEF_KEY (const unsigned char *) "asdfasdf"
+
 #define BIT_OVERHEAD 3
 
 #define T_LEN_MAX 32
@@ -15,6 +17,8 @@
 
 #define A_LEN_MAX 32
 #define A_PATTERN 0x12
+
+#define ERR_TOGGLE_BITS 0x10
 
 static int testRunner(permutation *f, pad *p, size_t rate, size_t block_size,
 		const unsigned char *key, const size_t key_byte_len,
@@ -41,6 +45,140 @@ dec_fail:
 enc_fail:
 
 	return ret;
+}
+
+static int testInvalid_tag(spongewrap *w_enc, spongewrap *w_dec)
+{
+	unsigned char a[A_LEN_MAX];
+	unsigned char b[B_LEN_MAX];
+	unsigned char c[B_LEN_MAX];
+	unsigned char d[B_LEN_MAX];
+	unsigned char t[T_LEN_MAX];
+
+	memset(a, A_PATTERN, A_LEN_MAX);
+	memset(b, B_PATTERN, B_LEN_MAX);
+
+	size_t err_idx;
+	for (err_idx = 0; err_idx < T_LEN_MAX; err_idx++) {
+		if (spongewrap_wrap(w_enc, a, A_LEN_MAX, b, B_LEN_MAX, c, t,
+					T_LEN_MAX) != 0) {
+			return 1;
+		}
+
+		t[err_idx] ^= ERR_TOGGLE_BITS;
+
+		if (spongewrap_unwrap(w_dec, a, A_LEN_MAX, c, B_LEN_MAX, t, T_LEN_MAX,
+					d) == 0) {
+			return 1;
+		}
+
+		size_t i;
+		for (i = 0; i < B_LEN_MAX; i++) {
+			if (d[i] != 0) {
+				return 1;
+			}
+		}
+
+		if (spongewrap_rekey(w_enc, DEF_KEY, sizeof(DEF_KEY)) != 0) {
+			return 1;
+		}
+
+		if (spongewrap_rekey(w_dec, DEF_KEY, sizeof(DEF_KEY)) != 0) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static int testInvalid_a(spongewrap *w_enc, spongewrap *w_dec)
+{
+	unsigned char a[A_LEN_MAX];
+	unsigned char b[B_LEN_MAX];
+	unsigned char c[B_LEN_MAX];
+	unsigned char d[B_LEN_MAX];
+	unsigned char t[T_LEN_MAX];
+
+	memset(b, B_PATTERN, B_LEN_MAX);
+
+	size_t err_idx;
+	for (err_idx = 0; err_idx < A_LEN_MAX; err_idx++) {
+		memset(a, A_PATTERN, A_LEN_MAX);
+
+		if (spongewrap_wrap(w_enc, a, A_LEN_MAX, b, B_LEN_MAX, c, t,
+					T_LEN_MAX) != 0) {
+			return 1;
+		}
+
+		a[err_idx] ^= ERR_TOGGLE_BITS;
+
+		if (spongewrap_unwrap(w_dec, a, A_LEN_MAX, c, B_LEN_MAX, t, T_LEN_MAX,
+					d) == 0) {
+			return 1;
+		}
+
+		size_t i;
+		for (i = 0; i < B_LEN_MAX; i++) {
+			if (d[i] != 0) {
+				return 1;
+			}
+		}
+
+		if (spongewrap_rekey(w_enc, DEF_KEY, sizeof(DEF_KEY)) != 0) {
+			return 1;
+		}
+
+		if (spongewrap_rekey(w_dec, DEF_KEY, sizeof(DEF_KEY)) != 0) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static int testInvalid_c(spongewrap *w_enc, spongewrap *w_dec)
+{
+	unsigned char a[A_LEN_MAX];
+	unsigned char b[B_LEN_MAX];
+	unsigned char c[B_LEN_MAX];
+	unsigned char d[B_LEN_MAX];
+	unsigned char t[T_LEN_MAX];
+
+	memset(a, A_PATTERN, A_LEN_MAX);
+	memset(b, B_PATTERN, B_LEN_MAX);
+
+	size_t err_idx;
+	for (err_idx = 0; err_idx < B_LEN_MAX; err_idx++) {
+
+		if (spongewrap_wrap(w_enc, a, A_LEN_MAX, b, B_LEN_MAX, c, t,
+					T_LEN_MAX) != 0) {
+			return 1;
+		}
+
+		c[err_idx] ^= ERR_TOGGLE_BITS;
+
+		if (spongewrap_unwrap(w_dec, a, A_LEN_MAX, c, B_LEN_MAX, t, T_LEN_MAX,
+					d) == 0) {
+			return 1;
+		}
+
+		size_t i;
+		for (i = 0; i < B_LEN_MAX; i++) {
+			if (d[i] != 0) {
+				return 1;
+			}
+		}
+
+		if (spongewrap_rekey(w_enc, DEF_KEY, sizeof(DEF_KEY)) != 0) {
+			return 1;
+		}
+
+		if (spongewrap_rekey(w_dec, DEF_KEY, sizeof(DEF_KEY)) != 0) {
+			return 1;
+		}
+	}
+
+	return 0;
 }
 
 static int testEmpty_a_b(spongewrap *w_enc, spongewrap *w_dec)
@@ -174,6 +312,18 @@ static int testSpongeWrap_internal(size_t rate, size_t block_size,
 		goto fail;
 	}
 
+	if (testRunner(f, p, rate, block_size, key, key_byte_len, testInvalid_tag) != 0) {
+		goto fail;
+	}
+
+	if (testRunner(f, p, rate, block_size, key, key_byte_len, testInvalid_a) != 0) {
+		goto fail;
+	}
+
+	if (testRunner(f, p, rate, block_size, key, key_byte_len, testInvalid_c) != 0) {
+		goto fail;
+	}
+
 	ret = 0;
 
 fail:
@@ -187,8 +337,6 @@ f_fail:
 
 int testSpongeWrap(void)
 {
-	unsigned char key[] = "asdfasdf";
-
 	size_t block_sizes[] = { 4, 8, 16, 32, 64 };
 	size_t rates[] = { 1024, 1152, 1088, 832, 576 };
 
@@ -208,14 +356,14 @@ int testSpongeWrap(void)
 				continue;
 			}
 
-			if (testSpongeWrap_internal(rate, block_size, key,
-						sizeof(key)) != 0) {
+			if (testSpongeWrap_internal(rate, block_size, DEF_KEY,
+						sizeof(DEF_KEY)) != 0) {
 				return 1;
 			}
 		}
 
 		if (testSpongeWrap_internal(block_size * 8 + BIT_OVERHEAD, block_size,
-					key, sizeof(key)) != 0) {
+					DEF_KEY, sizeof(DEF_KEY)) != 0) {
 			return 1;
 		}
 	}
