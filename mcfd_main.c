@@ -127,7 +127,7 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 			if (pfd->fd == crypt_sock) {
 				err = crypt_to_plain(crypt_sock, plain_sock, c_dec);
 			} else if (pfd->fd == plain_sock) {
-				err = plain_to_crypt(plain_sock, crypt_sock, c_dec);
+				err = plain_to_crypt(plain_sock, crypt_sock, c_enc);
 			} else {
 				assert(0);
 			}
