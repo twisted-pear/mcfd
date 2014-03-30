@@ -166,18 +166,32 @@ int main(int argc, char *const *argv)
 	while ((opt = getopt(argc, argv, "sl:k:")) != EOF) {
 		switch (opt) {
 		case 'k':
-			/* TODO: apply some KDF to key and drop length requirement */
-			if (optarg == NULL || strlen(optarg) != MCFD_KEY_BITS / 8) {
+			if (optarg == NULL) {
 				usage();
+			}
+
+			size_t pass_len = strlen(optarg);
+			if (pass_len == 0) {
+				usage();
+			}
+
+			/* TODO: figure out how to deal with the salt */
+			static unsigned char key[MCFD_KEY_BITS / 8];
+			if (mcfd_kdf(optarg, pass_len, NULL, 0, key) != 0) {
+				memset(key, 0, MCFD_KEY_BITS / 8);
+				print_err("init ciphers", "failed to derive key");
+				terminate(EXIT_FAILURE);
 			}
 
 			unsigned char nonce[MCFD_NONCE_BITS / 8];
 			memset(nonce, 0, MCFD_NONCE_BITS / 8);
+	
+			memset(optarg, 0, pass_len);
 
-			c_enc = mcfd_cipher_init(nonce, (unsigned char *) optarg);
-			c_dec = mcfd_cipher_init(nonce, (unsigned char *) optarg);
+			c_enc = mcfd_cipher_init(nonce, key);
+			c_dec = mcfd_cipher_init(nonce, key);
 
-			memset(optarg, 0, MCFD_KEY_BITS / 8);
+			memset(key, 0, MCFD_KEY_BITS / 8);
 
 			if (c_enc == NULL || c_dec == NULL) {
 				print_err("init ciphers", "failed to init ciphers");

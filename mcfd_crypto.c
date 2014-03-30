@@ -5,16 +5,88 @@
 
 #include "mcfd_crypto.h"
 #include "spongewrap.h"
+#include "sponge.h"
 #include "KeccakF-1600.h"
 #include "KeccakPad_10_1.h"
 
 #define SPONGEWRAP_RATE 576
+#define KDF_RATE 576
 
 struct mcfd_cipher_t {
 	spongewrap *w;
 	/* FIXME: Probably not long enough. */
 	uint64_t nonce;
 };
+
+int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
+		const size_t iterations, unsigned char *key)
+{
+	assert(pass != NULL);
+	assert(pass_len > 0);
+	assert(key != NULL);
+
+	size_t iter = iterations > 0 ? iterations : MCFD_KDF_DEF_ITERATIONS;
+
+	int ret = 1;
+
+	permutation *f = keccakF_1600_init();
+	if (f == NULL) {
+		goto permutation_fail;
+	}
+
+	pad *p = keccakPad_10_1_init(KDF_RATE);
+	if (p == NULL) {
+		goto pad_fail;
+	}
+
+    	sponge *sp = sponge_init(f, p, KDF_RATE);
+	if (sp == NULL) {
+		goto sponge_fail;
+	}
+
+	if (sponge_absorb(sp, (unsigned char *) pass, pass_len * 8) != 0) {
+		goto absorb_fail;
+	}
+
+	if (salt != NULL) {
+		if (sponge_absorb(sp, salt, MCFD_SALT_BITS) != 0) {
+			goto absorb_fail;
+		}
+	}
+
+	if (sponge_absorb_final(sp) != 0) {
+		goto absorb_fail;
+	}
+
+	assert(iter > 0);
+
+	static unsigned char kdf_buf[KDF_RATE / 8];
+
+	size_t i;
+	for (i = 0; i < iter - 1; i++) {
+		if (sponge_squeeze(sp, kdf_buf, KDF_RATE) != 0) {
+			goto squeeze_fail;
+		}
+	}
+
+	if (sponge_squeeze(sp, key, MCFD_KEY_BITS) != 0) {
+		goto squeeze_fail;
+	}
+
+	ret = 0;
+
+squeeze_fail:
+	memset(kdf_buf, 0, KDF_RATE / 8);
+absorb_fail:
+	sponge_free(sp);
+sponge_fail:
+	keccakPad_10_1_free(p);
+pad_fail:
+	keccakF_1600_free(f);
+permutation_fail:
+
+	return ret;
+}
 
 mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned char *key)
 {

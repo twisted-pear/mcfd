@@ -6,10 +6,15 @@
 /* FIXME: Probably not long enough. */
 #define MCFD_NONCE_BITS 64
 #define MCFD_TAG_BITS 512
+#define MCFD_SALT_BITS 128
+#define MCFD_KDF_DEF_ITERATIONS 10000
 
 #include <stdint.h>
 
 typedef struct mcfd_cipher_t mcfd_cipher;
+
+int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
+		const size_t iterations, unsigned char *key);
 
 mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned char *key);
 void mcfd_cipher_free(mcfd_cipher *cipher);
