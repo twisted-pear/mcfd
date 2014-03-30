@@ -1,5 +1,6 @@
 TEST_BIN= keccak_test
-BINS	= $(TEST_BIN)
+MCFD_BIN= mcfd
+BINS	= $(TEST_BIN) $(MCFD_BIN)
 
 TEST_IN	= LongMsgKAT.txt MonteCarlo.txt ShortMsgKAT.txt
 TEST_OUT= $(foreach type,LongMsgKAT MonteCarlo ShortMsgKAT,$(foreach size,224 256 384 512, $(type)_$(size).txt)) TestDuplex.txt
@@ -7,17 +8,24 @@ TEST_REF= test_expected/
 
 LIBS	=
 
-S_COMM	= sponge.c duplex.c common.c spongewrap.c main.c genKAT.c KeccakNISTInterface.c testDuplex.c testSpongeWrap.c
+S_TEST	= sponge.c main.c genKAT.c KeccakNISTInterface.c testDuplex.c testSpongeWrap.c
+S_MCFD	= mcfd_crypto.c mcfd_common.c mcfd_net.c mcfd_main.c
+S_COMM	= duplex.c common.c spongewrap.c
 S_PERM	= KeccakF-1600.c 
 S_PAD	= KeccakPad_10_1.c 
 
+O_TEST	= $(S_TEST:.c=.o)
+O_MCFD	= $(S_MCFD:.c=.o)
 O_COMM	= $(S_COMM:.c=.o)
 O_PERM	= $(S_PERM:.c=.o)
 O_PAD	= $(S_PAD:.c=.o)
 
-OBJS	= $(O_COMM) $(O_PERM) $(O_PAD)
+OS_TEST	= $(O_COMM) $(O_PERM) $(O_PAD) $(O_TEST)
+OS_MCFD	= $(O_COMM) $(O_PERM) $(O_PAD) $(O_MCFD)
 
-CFLAGS	= -Wall -pedantic -std=c99 -g
+OBJS	= $(O_COMM) $(O_PERM) $(O_PAD) $(O_TEST) $(O_MCFD)
+
+CFLAGS	= -Wall -pedantic -std=c99 -D_XOPEN_SOURCE=500 -g
 LDFLAGS	=
 
 all: $(BINS)
@@ -32,8 +40,11 @@ test: $(TEST_BIN) $(TEST_IN)
 	done; \
 	exit $$status
 
-$(TEST_BIN): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+$(TEST_BIN): $(OS_TEST)
+	$(CC) $(LDFLAGS) -o $@ $(OS_TEST) $(LIBS)
+
+$(MCFD_BIN): $(OS_MCFD)
+	$(CC) $(LDFLAGS) -o $@ $(OS_MCFD) $(LIBS)
 
 $(O_PERM): $(S_PERM) permutation.h
 	$(CC) $(CFLAGS) -o $@ -c $<
