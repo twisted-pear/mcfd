@@ -109,8 +109,13 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 				continue;
 			}
 
+			/* Connection closed */
+			if (pfd->revents & (POLLHUP)) {
+				terminate(EXIT_SUCCESS);
+			}
+
 			/* Some error, terminate */
-			if (pfd->revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			if (pfd->revents & (POLLERR | POLLNVAL)) {
 				print_err("handle_connection", "socket error");
 				terminate(EXIT_FAILURE);
 			}
