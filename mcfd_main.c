@@ -82,7 +82,8 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 		plain_sock = server_sock;
 	}
 
-	/* TODO: do some sort of key exchange. */
+	/* TODO: do some sort of key exchange or SRP. */
+	/* TODO: turn off signals when we finally close the original ciphers */
 
 	struct pollfd fds[2];
 	fds[0].fd = server_sock;
@@ -144,6 +145,7 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 	assert(0);
 }
 
+/* TODO: add more meaningful output */
 int main(int argc, char *const *argv)
 {
 	if (argc < 6 || argc > 9) {
