@@ -182,14 +182,11 @@ int main(int argc, char *const *argv)
 				print_err("init ciphers", "failed to derive key");
 				terminate(EXIT_FAILURE);
 			}
-
-			unsigned char nonce[MCFD_NONCE_BITS / 8];
-			memset(nonce, 0, MCFD_NONCE_BITS / 8);
 	
 			memset(optarg, 0, pass_len);
 
-			c_enc = mcfd_cipher_init(nonce, key);
-			c_dec = mcfd_cipher_init(nonce, key);
+			c_enc = mcfd_cipher_init(NULL, key);
+			c_dec = mcfd_cipher_init(NULL, key);
 
 			memset(key, 0, MCFD_KEY_BITS / 8);
 

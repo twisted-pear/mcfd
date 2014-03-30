@@ -3,8 +3,7 @@
 
 #define MCFD_BLOCK_SIZE 128
 #define MCFD_KEY_BITS 256
-/* FIXME: Probably not long enough. */
-#define MCFD_NONCE_BITS 64
+#define MCFD_NONCE_BITS 256
 #define MCFD_TAG_BITS 512
 #define MCFD_SALT_BITS 128
 #define MCFD_KDF_DEF_ITERATIONS 10000

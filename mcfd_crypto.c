@@ -14,9 +14,20 @@
 
 struct mcfd_cipher_t {
 	spongewrap *w;
-	/* FIXME: Probably not long enough. */
-	uint64_t nonce;
+	unsigned char nonce[MCFD_NONCE_BITS / 8];
 };
+
+static void nonce_succ(unsigned char *nonce)
+{
+	unsigned char carry = 1;
+
+	size_t i;
+	for (i = 0; i < MCFD_NONCE_BITS / 8; i++) {
+		nonce[i] += carry;
+		/*FIXME: do this side channel free */
+		carry &= (nonce[i] == 0);
+	}
+}
 
 int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 		const size_t iterations, unsigned char *key)
@@ -91,7 +102,6 @@ permutation_fail:
 mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned char *key)
 {
 	assert(key != NULL);
-	assert(init_nonce != NULL);
 
 	permutation *f = keccakF_1600_init();
 	if (f == NULL) {
@@ -115,7 +125,12 @@ mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned ch
 	}
 
 	cipher->w = w;
-	cipher->nonce = (uint64_t) *init_nonce;
+
+	if (init_nonce == NULL) {
+		memset(cipher->nonce, 0, sizeof(cipher->nonce));
+	} else {
+		memcpy(cipher->nonce, init_nonce, sizeof(cipher->nonce));
+	}
 
 	return cipher;
 
@@ -139,7 +154,7 @@ void mcfd_cipher_free(mcfd_cipher *cipher)
 	keccakF_1600_free(cipher->w->f);
 	spongewrap_free(cipher->w);
 
-	cipher->nonce = 0;
+	memset(cipher->nonce, 0, sizeof(cipher->nonce));
 
 	free(cipher);
 }
@@ -150,11 +165,10 @@ int mcfd_cipher_encrypt(mcfd_cipher *cipher, const unsigned char *plaintext,
 {
 	assert(cipher != NULL);
 
-	cipher->nonce++;
+	nonce_succ(cipher->nonce);
 
-	return spongewrap_wrap(cipher->w, (unsigned char *) &cipher->nonce,
-			sizeof(cipher->nonce), plaintext, plaintext_bytes, ciphertext,
-			tag, MCFD_TAG_BITS / 8);
+	return spongewrap_wrap(cipher->w, cipher->nonce, sizeof(cipher->nonce), plaintext,
+			plaintext_bytes, ciphertext, tag, MCFD_TAG_BITS / 8);
 }
 
 int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
@@ -163,9 +177,8 @@ int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
 {
 	assert(cipher != NULL);
 
-	cipher->nonce++;
+	nonce_succ(cipher->nonce);
 
-	return spongewrap_unwrap(cipher->w, (unsigned char *) &cipher->nonce,
-			sizeof(cipher->nonce), ciphertext, ciphertext_bytes, tag,
-			MCFD_TAG_BITS / 8, plaintext);
+	return spongewrap_unwrap(cipher->w, cipher->nonce, sizeof(cipher->nonce),
+			ciphertext, ciphertext_bytes, tag, MCFD_TAG_BITS / 8, plaintext);
 }
