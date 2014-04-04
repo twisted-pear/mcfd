@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,7 +15,7 @@
 
 struct mcfd_cipher_t {
 	spongewrap *w;
-	unsigned char nonce[MCFD_NONCE_BITS / 8];
+	unsigned char nonce[MCFD_NONCE_BYTES];
 };
 
 static void nonce_succ(unsigned char *nonce)
@@ -22,11 +23,42 @@ static void nonce_succ(unsigned char *nonce)
 	unsigned char carry = 1;
 
 	size_t i;
-	for (i = 0; i < MCFD_NONCE_BITS / 8; i++) {
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
 		nonce[i] += carry;
-		/*FIXME: do this side channel free */
-		carry &= (nonce[i] == 0);
+
+		/* check for 1-bits */
+		unsigned char accum = nonce[i];
+		accum = (accum >> 4) | (accum & 0x0F);
+		accum = (accum >> 2) | (accum & 0x03);
+		accum = (accum >> 1) | (accum & 0x01);
+		assert(accum == 0 || accum == 1);
+
+		carry &= ~accum;
+		assert(carry == 0 || carry == 1);
 	}
+}
+
+/* TODO: how about replacing this with the PRNG from the duplex paper? */
+int mcfd_get_random(unsigned char *outbuf, const size_t outbuf_size)
+{
+	int ret = 1;
+
+	FILE *f = fopen("/dev/urandom", "rb");
+	if (f == NULL) {
+		goto fail_open;
+	}
+
+	if (fread(outbuf, 1, outbuf_size, f) != outbuf_size) {
+		goto fail_read;
+	}
+
+	ret = 0;
+
+fail_read:
+	fclose(f);
+fail_open:
+
+	return ret;
 }
 
 int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
@@ -114,7 +146,7 @@ mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned ch
 	}
 
 	spongewrap *w = spongewrap_init(f, p, SPONGEWRAP_RATE, MCFD_BLOCK_SIZE / 8, key,
-			MCFD_KEY_BITS / 8);
+			MCFD_KEY_BYTES);
 	if (w == NULL) {
 		goto spongewrap_fail;
 	}
@@ -168,7 +200,7 @@ int mcfd_cipher_encrypt(mcfd_cipher *cipher, const unsigned char *plaintext,
 	nonce_succ(cipher->nonce);
 
 	return spongewrap_wrap(cipher->w, cipher->nonce, sizeof(cipher->nonce), plaintext,
-			plaintext_bytes, ciphertext, tag, MCFD_TAG_BITS / 8);
+			plaintext_bytes, ciphertext, tag, MCFD_TAG_BYTES);
 }
 
 int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
@@ -180,5 +212,5 @@ int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
 	nonce_succ(cipher->nonce);
 
 	return spongewrap_unwrap(cipher->w, cipher->nonce, sizeof(cipher->nonce),
-			ciphertext, ciphertext_bytes, tag, MCFD_TAG_BITS / 8, plaintext);
+			ciphertext, ciphertext_bytes, tag, MCFD_TAG_BYTES, plaintext);
 }

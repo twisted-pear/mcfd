@@ -2,18 +2,29 @@
 #define __MCFD_CRYPTO_H__
 
 #define MCFD_BLOCK_SIZE 128
+
 #define MCFD_KEY_BITS 256
+#define MCFD_KEY_BYTES (MCFD_KEY_BITS / 8)
+
 #define MCFD_NONCE_BITS 256
+#define MCFD_NONCE_BYTES (MCFD_NONCE_BITS / 8)
+
 #define MCFD_TAG_BITS 512
+#define MCFD_TAG_BYTES (MCFD_TAG_BITS / 8)
+
 #define MCFD_SALT_BITS 128
+#define MCFD_SALT_BYTES (MCFD_SALT_BYTES / 8)
+
 #define MCFD_KDF_DEF_ITERATIONS 10000
 
 #include <stdint.h>
 
-typedef struct mcfd_cipher_t mcfd_cipher;
+int mcfd_get_random(unsigned char *outbuf, const size_t outbuf_size);
 
 int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 		const size_t iterations, unsigned char *key);
+
+typedef struct mcfd_cipher_t mcfd_cipher;
 
 mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned char *key);
 void mcfd_cipher_free(mcfd_cipher *cipher);

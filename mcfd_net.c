@@ -11,7 +11,7 @@
 #include "mcfd_common.h"
 #include "mcfd_net.h"
 
-#define DGRAM_DATA_SIZE ((MCFD_BLOCK_SIZE / 8) * 4)
+#define DGRAM_DATA_SIZE ((MCFD_BLOCK_SIZE / 8) * 6)
 
 struct dgram_t {
 	unsigned short size;
@@ -19,8 +19,7 @@ struct dgram_t {
 } __attribute__((packed));
 
 #define CRYPT_SIZE (sizeof(struct dgram_t))
-#define TAG_SIZE (MCFD_TAG_BITS / 8)
-#define BUF_SIZE (CRYPT_SIZE + TAG_SIZE)
+#define BUF_SIZE (CRYPT_SIZE + MCFD_TAG_BYTES)
 
 static struct dgram_t dgram;
 static unsigned char buf[BUF_SIZE];
@@ -29,6 +28,91 @@ void clear_buffers(void)
 {
 	memset(buf, 0, BUF_SIZE);
 	memset(&dgram, 0, CRYPT_SIZE);
+}
+
+int send_crypt(int crypt_sock, mcfd_cipher *c_enc, const unsigned char *outbuf,
+		const size_t outbuf_size)
+{
+	assert(crypt_sock != -1);
+	assert(c_enc != NULL);
+	assert(outbuf != NULL);
+	assert(outbuf_size <= BUF_SIZE - MCFD_TAG_BYTES);
+
+	int ret = -1;
+
+	if (mcfd_cipher_encrypt(c_enc, outbuf, outbuf_size, buf,
+				buf + outbuf_size) != 0) {
+		print_err("encrypt", "encryption failed");
+		goto out;
+	}
+
+	/* TODO: determine if we have to consider signals here */
+	int slen = send(crypt_sock, buf, outbuf_size + MCFD_TAG_BYTES, MSG_NOSIGNAL);
+
+	/* Error */
+	if (slen < 0) {
+		print_err("send crypt", strerror(errno));
+		goto out;
+	}
+
+	/* Connection closed */
+	if (slen != outbuf_size + MCFD_TAG_BYTES) {
+		print_err("send crypt", "data not sent");
+		goto out;
+	}
+
+	ret = 0;
+
+out:
+	/* Do a cleanup just in case. */
+	clear_buffers();
+
+	return ret;
+}
+
+int recv_crypt(int crypt_sock, mcfd_cipher *c_dec, unsigned char *inbuf,
+		const size_t inbuf_size)
+{
+	assert(crypt_sock != -1);
+	assert(c_dec != NULL);
+	assert(inbuf != NULL);
+	assert(inbuf_size <= BUF_SIZE - MCFD_TAG_BYTES);
+
+	int ret = -1;
+
+	/* TODO: determine if we have to consider signals here */
+	int rlen = recv(crypt_sock, buf, inbuf_size + MCFD_TAG_BYTES, MSG_WAITALL);
+
+	/* Error */
+	if (rlen < 0) {
+		print_err("receive crypt", strerror(errno));
+		goto out;
+	}
+
+	/* Connection closed */
+	if (rlen == 0) {
+		ret = 1;
+		goto out;
+	}
+
+	if (rlen != inbuf_size + MCFD_TAG_BYTES) {
+		print_err("receive crypt", "data not received");
+		goto out;
+	}
+
+	if (mcfd_cipher_decrypt(c_dec, buf, inbuf_size, buf + inbuf_size, inbuf) != 0) {
+		print_err("decrypt", "decryption failed");
+		goto out;
+	}
+
+	ret = 0;
+
+out:
+	/* Do a cleanup just in case. */
+	clear_buffers();
+
+	return ret;
+
 }
 
 int crypt_to_plain(int crypt_sock, int plain_sock, mcfd_cipher *c_dec)

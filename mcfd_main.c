@@ -8,6 +8,7 @@
 
 #include <assert.h>
 
+#include "mcfd_auth.h"
 #include "mcfd_common.h"
 #include "mcfd_crypto.h"
 #include "mcfd_net.h"
@@ -22,8 +23,14 @@ static int listen_sock = -1;
 static int client_sock = -1;
 static int server_sock = -1;
 
+static unsigned char key[MCFD_KEY_BYTES];
+static unsigned char nonce[MCFD_NONCE_BYTES];
+
 void cleanup(void)
 {
+	memset(key, 0, MCFD_KEY_BYTES);
+	memset(nonce, 0, MCFD_NONCE_BYTES);
+
 	if (c_enc != NULL) {
 		mcfd_cipher_free(c_enc);
 	}
@@ -63,6 +70,8 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 		const enum op_mode mode)
 {
 	assert(client_sock != -1);
+	assert(c_enc != NULL);
+	assert(c_dec != NULL);
 
 	close(listen_sock);
 	listen_sock = -1;
@@ -72,18 +81,53 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 		terminate(EXIT_FAILURE);
 	}
 
+	/* TODO: investigate SRP. */
+
 	int crypt_sock;
 	int plain_sock;
 	if (mode == MODE_CLIENT) {
 		crypt_sock = server_sock;
 		plain_sock = client_sock;
+
+		if (mcfd_auth_client(crypt_sock, c_enc, c_dec, key, nonce) != 0) {
+			print_err("auth", "failed to authenticate server");
+			terminate(EXIT_FAILURE);
+		}
+
 	} else {
 		crypt_sock = client_sock;
 		plain_sock = server_sock;
+
+		if (mcfd_auth_server(crypt_sock, c_enc, c_dec, key, nonce) != 0) {
+			print_err("auth", "failed to authenticate client");
+			terminate(EXIT_FAILURE);
+		}
+
 	}
 
-	/* TODO: do some sort of key exchange or SRP. */
-	/* TODO: turn off signals when we finally close the original ciphers */
+	/* We disable signals here to absolutely make sure that the old ciphers are
+	 * properly destroyed. */
+	block_signals();
+
+	mcfd_cipher_free(c_enc);
+	mcfd_cipher_free(c_dec);
+
+	/* Reverse nonce in one direction to make sure no two plaintexts are encrypted to
+	 * the same byte sequence. */
+	if (mode == MODE_CLIENT) {
+		c_enc = mcfd_cipher_init(nonce, key);
+		reverse_bytes(nonce, MCFD_NONCE_BYTES);
+		c_dec = mcfd_cipher_init(nonce, key);
+	} else {
+		c_dec = mcfd_cipher_init(nonce, key);
+		reverse_bytes(nonce, MCFD_NONCE_BYTES);
+		c_enc = mcfd_cipher_init(nonce, key);
+	}
+
+	unblock_signals();
+
+	memset(key, 0, MCFD_KEY_BYTES);
+	memset(nonce, 0, MCFD_NONCE_BYTES);
 
 	struct pollfd fds[2];
 	fds[0].fd = server_sock;
@@ -145,6 +189,7 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 	assert(0);
 }
 
+/* TODO: speed up transmission (a lot) */
 /* TODO: add more meaningful output */
 int main(int argc, char *const *argv)
 {
@@ -163,6 +208,8 @@ int main(int argc, char *const *argv)
 	char *listen_addr = NULL;
 
 	/* Argument parsing */
+	char *pass;
+	size_t pass_len;
 	enum op_mode mode = MODE_CLIENT;
 	int opt;
 	while ((opt = getopt(argc, argv, "sl:k:")) != EOF) {
@@ -172,30 +219,12 @@ int main(int argc, char *const *argv)
 				usage();
 			}
 
-			size_t pass_len = strlen(optarg);
+			pass_len = strlen(optarg);
 			if (pass_len == 0) {
 				usage();
 			}
 
-			/* TODO: figure out how to deal with the salt */
-			static unsigned char key[MCFD_KEY_BITS / 8];
-			if (mcfd_kdf(optarg, pass_len, NULL, 0, key) != 0) {
-				memset(key, 0, MCFD_KEY_BITS / 8);
-				print_err("init ciphers", "failed to derive key");
-				terminate(EXIT_FAILURE);
-			}
-	
-			memset(optarg, 0, pass_len);
-
-			c_enc = mcfd_cipher_init(NULL, key);
-			c_dec = mcfd_cipher_init(NULL, key);
-
-			memset(key, 0, MCFD_KEY_BITS / 8);
-
-			if (c_enc == NULL || c_dec == NULL) {
-				print_err("init ciphers", "failed to init ciphers");
-				terminate(EXIT_FAILURE);
-			}
+			pass = optarg;
 
 			break;
 		case 'l':
@@ -232,6 +261,38 @@ int main(int argc, char *const *argv)
 	char *dst_port = argv[optind + 2];
 
 	setup_signal_handlers();
+
+	/* TODO: Is this really necessary? */
+	/* Disable signals here to make sure the key is correctly destroyed again. */
+	block_signals();
+
+	/* TODO: figure out how to deal with the salt */
+	if (mcfd_kdf(pass, pass_len, NULL, 0, key) != 0) {
+		print_err("init ciphers", "failed to derive key");
+		terminate(EXIT_FAILURE);
+	}
+
+	memset(pass, 0, pass_len);
+
+	/* Reverse keys in one direction to simplify auth. */
+	if (mode == MODE_CLIENT) {
+		c_enc = mcfd_cipher_init(NULL, key);
+		reverse_bytes(key, MCFD_KEY_BYTES);
+		c_dec = mcfd_cipher_init(NULL, key);
+	} else {
+		c_dec = mcfd_cipher_init(NULL, key);
+		reverse_bytes(key, MCFD_KEY_BYTES);
+		c_enc = mcfd_cipher_init(NULL, key);
+	}
+
+	memset(key, 0, MCFD_KEY_BYTES);
+
+	unblock_signals();
+
+	if (c_enc == NULL || c_dec == NULL) {
+		print_err("init ciphers", "failed to init ciphers");
+		terminate(EXIT_FAILURE);
+	}
 
 	listen_sock = create_listen_socket(&listen_sock, listen_addr, listen_port);
 	if (listen_sock == -1) {

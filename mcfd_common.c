@@ -45,14 +45,36 @@ static void handle_child(int signal)
 	}
 }
 
+void block_signals(void)
+{
+	sigset_t mask;
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGQUIT);
+
+	assert(sigprocmask(SIG_BLOCK, &mask, NULL) == 0);
+}
+
+void unblock_signals(void)
+{
+	sigset_t mask;
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGQUIT);
+
+	assert(sigprocmask(SIG_UNBLOCK, &mask, NULL) == 0);
+}
+
 void setup_signal_handlers(void)
 {
 	sigset_t mask;
-	(void)sigemptyset(&mask);
-	(void)sigaddset(&mask, SIGTERM);
-	(void)sigaddset(&mask, SIGINT);
-	(void)sigaddset(&mask, SIGQUIT);
-	(void)sigaddset(&mask, SIGCHLD);
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGQUIT);
+	sigaddset(&mask, SIGCHLD);
 
 	struct sigaction act;
 	act.sa_handler = handle_signal;
@@ -83,5 +105,29 @@ void setup_signal_handlers(void)
 	if (sigaction(SIGCHLD, &act, NULL) < 0) {
 		print_err("set SIGCHLD signal handler", strerror(errno));
 		terminate(EXIT_FAILURE);
+	}
+}
+
+/* This function shamelessly stolen from https://stackoverflow.com/questions/2602823/. */
+unsigned char reverse_bits(unsigned char b)
+{
+	b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+	b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+	b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+	return b;
+}
+
+void reverse_bytes(unsigned char *bytes, size_t n)
+{
+	size_t i;
+	for (i = 0; i < n / 2; i++) {
+		/* swap bytes */
+		bytes[i] ^= bytes[(n - 1) - i];
+		bytes[(n - 1) - i] ^= bytes[i];
+		bytes[i] ^= bytes[(n - 1) - i];
+	}
+
+	for (i = 0; i < n; i++) {
+		bytes[i] = reverse_bits(bytes[i]);
 	}
 }

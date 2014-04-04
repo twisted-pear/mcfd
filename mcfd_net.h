@@ -4,6 +4,12 @@
 #include "mcfd_crypto.h"
 
 void clear_buffers(void);
+
+int send_crypt(int crypt_sock, mcfd_cipher *c_enc, const unsigned char *outbuf,
+		const size_t outbuf_size);
+int recv_crypt(int crypt_sock, mcfd_cipher *c_dec, unsigned char *inbuf,
+		const size_t inbuf_size);
+
 int crypt_to_plain(int crypt_sock, int plain_sock, mcfd_cipher *c_dec);
 int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc);
 
