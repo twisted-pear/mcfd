@@ -4,7 +4,7 @@
 #include <assert.h>
 
 #include "sponge.h"
-#include "common.h"
+#include "crypto_helpers.h"
 
 struct internals {
 	unsigned char *state;

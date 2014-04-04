@@ -5,7 +5,7 @@
 #include <assert.h>
 
 #include "spongewrap.h"
-#include "common.h"
+#include "crypto_helpers.h"
 #include "duplex.h"
 
 struct internals {

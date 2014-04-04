@@ -2,7 +2,7 @@
 
 #include <assert.h>
 
-#include "common.h"
+#include "crypto_helpers.h"
 
 int const_cmp(const unsigned char *s1, const unsigned char *s2, size_t n)
 {

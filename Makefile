@@ -10,7 +10,7 @@ LIBS	=
 
 S_TEST	= main.c genKAT.c KeccakNISTInterface.c testDuplex.c testSpongeWrap.c
 S_MCFD	= mcfd_crypto.c mcfd_common.c mcfd_net.c mcfd_main.c
-S_COMM	= sponge.c duplex.c common.c spongewrap.c
+S_COMM	= sponge.c duplex.c crypto_helpers.c spongewrap.c
 S_PERM	= KeccakF-1600.c 
 S_PAD	= KeccakPad_10_1.c 
 
