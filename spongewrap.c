@@ -13,18 +13,6 @@ struct internals {
 	unsigned char *buf;
 };
 
-#include <stdio.h>
-static void print_buf(const unsigned char *buf, size_t len)
-{
-	size_t i;
-
-	printf("\n");
-	for (i = 0; i < len; i++) {
-		printf("%02x ", buf[i]);
-	}
-	printf("\n");
-}
-
 static void duplex_with_frame_bit(spongewrap *w, const unsigned char *in,
 		const size_t in_byte_len, unsigned char *out,
 		const size_t out_byte_len, bool frame_bit)
@@ -44,8 +32,6 @@ static void duplex_with_frame_bit(spongewrap *w, const unsigned char *in,
 	memcpy(internal->buf, in, in_byte_len);
 
 	internal->buf[in_byte_len] = frame_bit ? 0x80 : 0x00;
-
-	//print_buf(internal->buf, w->block_size + 1);
 
 	if (duplex_duplexing(internal->dp, internal->buf, (in_byte_len * 8) + 1, out,
 				out_byte_len * 8) != 0) {

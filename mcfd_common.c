@@ -16,6 +16,17 @@ void terminate(const int exitCode)
 	assert(0);
 }
 
+void print_buf(const unsigned char *buf, size_t len)
+{
+	size_t i;
+
+	printf("\n");
+	for (i = 0; i < len; i++) {
+		printf("%02x ", buf[i]);
+	}
+	printf("\n");
+}
+
 void print_err(const char *const action, const char *const reason)
 {
 	(void)fprintf(stderr, "%s [ERROR] %s: %s\n", progname, action, reason);
