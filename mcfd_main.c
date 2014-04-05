@@ -78,18 +78,18 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 	close(listen_sock);
 	listen_sock = -1;
 
-	server_sock = connect_to_server(&server_sock, dst_addr, dst_port);
-	if (server_sock == -1) {
-		terminate(EXIT_FAILURE);
-	}
-
 	/* TODO: investigate SRP. */
 
-	int crypt_sock;
-	int plain_sock;
+	int crypt_sock = -1;
+	int plain_sock = -1;
 	if (mode == MODE_CLIENT) {
+		assert(server_sock == -1);
+
+		server_sock = connect_to_server(&server_sock, dst_addr, dst_port);
+		if (server_sock == -1) {
+			terminate(EXIT_FAILURE);
+		}
 		crypt_sock = server_sock;
-		plain_sock = client_sock;
 
 		if (mcfd_auth_client(crypt_sock, c_enc, c_dec, key, nonce_enc,
 					nonce_dec) != 0) {
@@ -99,7 +99,6 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 
 	} else {
 		crypt_sock = client_sock;
-		plain_sock = server_sock;
 
 		if (mcfd_auth_server(crypt_sock, c_enc, c_dec, key, nonce_enc,
 					nonce_dec) != 0) {
@@ -124,6 +123,21 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 	memset(key, 0, MCFD_KEY_BYTES);
 	memset(nonce_enc, 0, MCFD_NONCE_BYTES);
 	memset(nonce_dec, 0, MCFD_NONCE_BYTES);
+
+	if (mode == MODE_CLIENT) {
+		plain_sock = client_sock;
+	} else {
+		assert(server_sock == -1);
+
+		server_sock = connect_to_server(&server_sock, dst_addr, dst_port);
+		if (server_sock == -1) {
+			terminate(EXIT_FAILURE);
+		}
+		plain_sock = server_sock;
+	}
+
+	assert(crypt_sock != -1);
+	assert(plain_sock != -1);
 
 	struct pollfd fds[2];
 	fds[0].fd = server_sock;
