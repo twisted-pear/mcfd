@@ -11,24 +11,25 @@
 #include "mcfd_common.h"
 #include "mcfd_net.h"
 
-/* TODO: choose good size and make it independent of the auth part. */
-#define DGRAM_DATA_SIZE ((MCFD_BLOCK_SIZE / 8) * 8)
+#define DGRAM_DATA_SIZE ((MCFD_BLOCK_SIZE / 8) - sizeof(unsigned short))
 
 struct dgram_t {
 	unsigned short size;
 	unsigned char data[DGRAM_DATA_SIZE];
 } __attribute__((packed));
 
-#define CRYPT_SIZE (sizeof(struct dgram_t))
-#define BUF_SIZE (CRYPT_SIZE + MCFD_TAG_BYTES)
-
 static struct dgram_t dgram;
+
+#define CRYPT_SIZE (sizeof(dgram) + MCFD_TAG_BYTES)
+
+/* Make sure this is at least >= CRYPT_SIZE and large enough for mcfd_auth. */
+#define BUF_SIZE 4096
 static unsigned char buf[BUF_SIZE];
 
 void clear_buffers(void)
 {
 	memset(buf, 0, BUF_SIZE);
-	memset(&dgram, 0, CRYPT_SIZE);
+	memset(&dgram, 0, sizeof(dgram));
 }
 
 int send_crypt(int crypt_sock, mcfd_cipher *c_enc, const unsigned char *outbuf,
@@ -121,11 +122,12 @@ int crypt_to_plain(int crypt_sock, int plain_sock, mcfd_cipher *c_dec)
 	assert(crypt_sock != -1);
 	assert(plain_sock != -1);
 	assert(c_dec != NULL);
+	assert(BUF_SIZE >= CRYPT_SIZE);
 
 	int ret = -1;
 
 	/* TODO: determine if we have to consider signals here */
-	int rlen = recv(crypt_sock, buf, BUF_SIZE, MSG_WAITALL);
+	int rlen = recv(crypt_sock, buf, CRYPT_SIZE, MSG_WAITALL);
 
 	/* Error */
 	if (rlen < 0) {
@@ -139,12 +141,12 @@ int crypt_to_plain(int crypt_sock, int plain_sock, mcfd_cipher *c_dec)
 		goto out;
 	}
 
-	if (rlen != BUF_SIZE) {
+	if (rlen != CRYPT_SIZE) {
 		print_err("receive crypt", "data not received");
 		goto out;
 	}
 
-	if (mcfd_cipher_decrypt(c_dec, buf, CRYPT_SIZE, buf + CRYPT_SIZE,
+	if (mcfd_cipher_decrypt(c_dec, buf, sizeof(dgram), buf + sizeof(dgram),
 				(unsigned char *) &dgram) != 0) {
 		print_err("decrypt", "decryption failed");
 		goto out;
@@ -187,6 +189,7 @@ int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc)
 	assert(plain_sock != -1);
 	assert(crypt_sock != -1);
 	assert(c_enc != NULL);
+	assert(BUF_SIZE >= CRYPT_SIZE);
 
 	int ret = -1;
 
@@ -209,14 +212,14 @@ int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc)
 
 	dgram.size = htons(rlen);
 
-	if (mcfd_cipher_encrypt(c_enc, (unsigned char *) &dgram, CRYPT_SIZE, buf,
-				buf + CRYPT_SIZE) != 0) {
+	if (mcfd_cipher_encrypt(c_enc, (unsigned char *) &dgram, sizeof(dgram), buf,
+				buf + sizeof(dgram)) != 0) {
 		print_err("encrypt", "encryption failed");
 		goto out;
 	}
 
 	/* TODO: determine if we have to consider signals here */
-	int slen = send(crypt_sock, buf, BUF_SIZE, MSG_NOSIGNAL);
+	int slen = send(crypt_sock, buf, CRYPT_SIZE, MSG_NOSIGNAL);
 
 	/* Error */
 	if (slen < 0) {
@@ -225,7 +228,7 @@ int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc)
 	}
 
 	/* Connection closed */
-	if (slen != BUF_SIZE) {
+	if (slen != CRYPT_SIZE) {
 		print_err("send crypt", "data not sent");
 		goto out;
 	}
