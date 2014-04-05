@@ -11,7 +11,7 @@
 #include "mcfd_common.h"
 #include "mcfd_net.h"
 
-#define DGRAM_DATA_SIZE ((MCFD_BLOCK_SIZE / 8) - sizeof(unsigned short))
+#define DGRAM_DATA_SIZE (((MCFD_BLOCK_SIZE / 8) * 8) - sizeof(unsigned short))
 
 struct dgram_t {
 	unsigned short size;
