@@ -24,12 +24,14 @@ static int client_sock = -1;
 static int server_sock = -1;
 
 static unsigned char key[MCFD_KEY_BYTES];
-static unsigned char nonce[MCFD_NONCE_BYTES];
+static unsigned char nonce_enc[MCFD_NONCE_BYTES];
+static unsigned char nonce_dec[MCFD_NONCE_BYTES];
 
 void cleanup(void)
 {
 	memset(key, 0, MCFD_KEY_BYTES);
-	memset(nonce, 0, MCFD_NONCE_BYTES);
+	memset(nonce_enc, 0, MCFD_NONCE_BYTES);
+	memset(nonce_dec, 0, MCFD_NONCE_BYTES);
 
 	if (c_enc != NULL) {
 		mcfd_cipher_free(c_enc);
@@ -89,7 +91,8 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 		crypt_sock = server_sock;
 		plain_sock = client_sock;
 
-		if (mcfd_auth_client(crypt_sock, c_enc, c_dec, key, nonce) != 0) {
+		if (mcfd_auth_client(crypt_sock, c_enc, c_dec, key, nonce_enc,
+					nonce_dec) != 0) {
 			print_err("auth", "failed to authenticate server");
 			terminate(EXIT_FAILURE);
 		}
@@ -98,7 +101,8 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 		crypt_sock = client_sock;
 		plain_sock = server_sock;
 
-		if (mcfd_auth_server(crypt_sock, c_enc, c_dec, key, nonce) != 0) {
+		if (mcfd_auth_server(crypt_sock, c_enc, c_dec, key, nonce_enc,
+					nonce_dec) != 0) {
 			print_err("auth", "failed to authenticate client");
 			terminate(EXIT_FAILURE);
 		}
@@ -112,22 +116,14 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 	mcfd_cipher_free(c_enc);
 	mcfd_cipher_free(c_dec);
 
-	/* Reverse nonce in one direction to make sure no two plaintexts are encrypted to
-	 * the same byte sequence. */
-	if (mode == MODE_CLIENT) {
-		c_enc = mcfd_cipher_init(nonce, key);
-		reverse_bytes(nonce, MCFD_NONCE_BYTES);
-		c_dec = mcfd_cipher_init(nonce, key);
-	} else {
-		c_dec = mcfd_cipher_init(nonce, key);
-		reverse_bytes(nonce, MCFD_NONCE_BYTES);
-		c_enc = mcfd_cipher_init(nonce, key);
-	}
+	c_enc = mcfd_cipher_init(nonce_enc, key);
+	c_dec = mcfd_cipher_init(nonce_dec, key);
 
 	unblock_signals();
 
 	memset(key, 0, MCFD_KEY_BYTES);
-	memset(nonce, 0, MCFD_NONCE_BYTES);
+	memset(nonce_enc, 0, MCFD_NONCE_BYTES);
+	memset(nonce_dec, 0, MCFD_NONCE_BYTES);
 
 	struct pollfd fds[2];
 	fds[0].fd = server_sock;

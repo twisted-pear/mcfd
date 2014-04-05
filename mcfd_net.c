@@ -11,7 +11,8 @@
 #include "mcfd_common.h"
 #include "mcfd_net.h"
 
-#define DGRAM_DATA_SIZE ((MCFD_BLOCK_SIZE / 8) * 6)
+/* TODO: choose good size and make it independent of the auth part. */
+#define DGRAM_DATA_SIZE ((MCFD_BLOCK_SIZE / 8) * 8)
 
 struct dgram_t {
 	unsigned short size;
