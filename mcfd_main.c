@@ -58,7 +58,7 @@ void cleanup(void)
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: %s [-s] [-l <listen_addr>] -k <key> <listen_port> "
+	fprintf(stderr, "Usage: %s [-f] [-s] [-l <listen_addr>] -k <key> <listen_port> "
 			"<dst_addr> <dst_port>\n", progname);
 	terminate(EXIT_FAILURE);
 }
@@ -204,7 +204,7 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 /* TODO: add more meaningful output */
 int main(int argc, char *const *argv)
 {
-	if (argc < 6 || argc > 9) {
+	if (argc < 6 || argc > 10) {
 		usage();
 	}
 
@@ -219,12 +219,17 @@ int main(int argc, char *const *argv)
 	char *listen_addr = NULL;
 
 	/* Argument parsing */
+	int do_fork = 0;
 	char *pass;
 	size_t pass_len;
 	enum op_mode mode = MODE_CLIENT;
 	int opt;
-	while ((opt = getopt(argc, argv, "sl:k:")) != EOF) {
+	while ((opt = getopt(argc, argv, "fk:l:s")) != EOF) {
 		switch (opt) {
+		case 'f':
+			do_fork = 1;
+
+			break;
 		case 'k':
 			if (optarg == NULL) {
 				usage();
@@ -323,13 +328,18 @@ int main(int argc, char *const *argv)
 			continue;
 		}
 
-		pid_t pid = fork();
-		if (pid < 0) {
-			print_err("fork", strerror(errno));
-		} else if (pid == 0) {
+		pid_t pid = 0;
+
+		if (do_fork) {
+			pid = fork();
+		}
+
+		if (pid == 0) {
 			/* child */
 			handle_connection(dst_addr, dst_port, mode);
 			assert(0);
+		} else if (pid < 0) {
+			print_err("fork", strerror(errno));
 		}
 
 		close(client_sock);
