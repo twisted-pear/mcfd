@@ -11,6 +11,8 @@
 
 void terminate(const int exitCode)
 {
+	/* Block signals to make sure cleanup doesn't run into trouble. */
+	block_signals();
 	cleanup();
 	exit(exitCode);
 	assert(0);

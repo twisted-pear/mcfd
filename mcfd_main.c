@@ -35,24 +35,29 @@ void cleanup(void)
 
 	if (c_enc != NULL) {
 		mcfd_cipher_free(c_enc);
+		c_enc = NULL;
 	}
 
 	if (c_dec != NULL) {
 		mcfd_cipher_free(c_dec);
+		c_dec = NULL;
 	}
 
 	clear_buffers();
 
 	if (listen_sock != -1) {
 		close(listen_sock);
+		listen_sock = -1;
 	}
 
 	if (client_sock != -1) {
 		close(client_sock);
+		client_sock = -1;
 	}
 
 	if (server_sock != -1) {
 		close(server_sock);
+		server_sock = -1;
 	}
 }
 
