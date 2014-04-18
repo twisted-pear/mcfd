@@ -158,11 +158,7 @@ mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned ch
 
 	cipher->w = w;
 
-	if (init_nonce == NULL) {
-		memset(cipher->nonce, 0, sizeof(cipher->nonce));
-	} else {
-		memcpy(cipher->nonce, init_nonce, sizeof(cipher->nonce));
-	}
+	mcfd_cipher_set_nonce(cipher, init_nonce);
 
 	return cipher;
 
@@ -191,11 +187,23 @@ void mcfd_cipher_free(mcfd_cipher *cipher)
 	free(cipher);
 }
 
+void mcfd_cipher_set_nonce(mcfd_cipher *cipher, const unsigned char *nonce)
+{
+	assert(cipher != NULL);
+
+	if (nonce == NULL) {
+		memset(cipher->nonce, 0, sizeof(cipher->nonce));
+	} else {
+		memcpy(cipher->nonce, nonce, sizeof(cipher->nonce));
+	}
+}
+
 int mcfd_cipher_encrypt(mcfd_cipher *cipher, const unsigned char *plaintext,
 		const size_t plaintext_bytes, unsigned char *ciphertext,
 		unsigned char *tag)
 {
 	assert(cipher != NULL);
+	assert(cipher->w != NULL);
 
 	nonce_succ(cipher->nonce);
 
@@ -208,6 +216,7 @@ int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
 		unsigned char *plaintext)
 {
 	assert(cipher != NULL);
+	assert(cipher->w != NULL);
 
 	nonce_succ(cipher->nonce);
 

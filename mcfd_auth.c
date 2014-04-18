@@ -36,6 +36,10 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	assert(nonce_enc != NULL);
 	assert(nonce_dec != NULL);
 
+	/* This is required because we reuse the challenges as nonces. */
+	assert(sizeof(server_challenge) == MCFD_NONCE_BYTES);
+	assert(sizeof(client_challenge) == MCFD_NONCE_BYTES);
+
 	/* Create first halves of new key and nonces. */
 	if (mcfd_get_random(key, MCFD_KEY_BYTES / 2) != 0) {
 		return 1;
@@ -59,6 +63,11 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 		print_err("send server challenge", strerror(errno));
 		return 1;
 	}
+
+	/* Reuse server challenge as initial nonce for dec cipher to ensure that a unique
+	 * key stream is used. */
+	/* TODO: determine whether or not this can create problems. */
+	mcfd_cipher_set_nonce(c_dec, server_challenge);
 
 	/* TODO: do a timeout here. */
 	/* Receive client reply and check server challenge */
@@ -86,6 +95,11 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	memcpy(auth_msg.half_nonce1, nonce_enc, MCFD_NONCE_BYTES / 2);
 	memcpy(auth_msg.half_nonce2, nonce_dec, MCFD_NONCE_BYTES / 2);
 
+	/* Reuse client challenge as initial nonce for enc cipher to ensure that a unique
+	 * key stream is used. */
+	/* TODO: determine whether or not this can create problems. */
+	mcfd_cipher_set_nonce(c_enc, client_challenge);
+
 	if (send_crypt(crypt_sock, c_enc, (unsigned char *) &auth_msg,
 				sizeof(auth_msg) )!= 0) {
 		return 1;
@@ -107,6 +121,10 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	assert(key != NULL);
 	assert(nonce_enc != NULL);
 	assert(nonce_dec != NULL);
+
+	/* This is required because we reuse the challenges as nonces. */
+	assert(sizeof(server_challenge) == MCFD_NONCE_BYTES);
+	assert(sizeof(client_challenge) == MCFD_NONCE_BYTES);
 
 	/* Create second halves of new key and nonces. */
 	if (mcfd_get_random(key + MCFD_KEY_BYTES / 2, MCFD_KEY_BYTES / 2) != 0) {
@@ -144,10 +162,20 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	memcpy(auth_msg.half_nonce1, nonce_dec + MCFD_NONCE_BYTES / 2,
 			MCFD_NONCE_BYTES / 2);
 
+	/* Reuse server challenge as initial nonce for enc cipher to ensure that a unique
+	 * key stream is used. */
+	/* TODO: determine whether or not this can create problems. */
+	mcfd_cipher_set_nonce(c_enc, server_challenge);
+
 	if (send_crypt(crypt_sock, c_enc, (unsigned char *) &auth_msg,
 				sizeof(auth_msg) )!= 0) {
 		return 1;
 	}
+
+	/* Reuse client challenge as initial nonce for dec cipher to ensure that a unique
+	 * key stream is used. */
+	/* TODO: determine whether or not this can create problems. */
+	mcfd_cipher_set_nonce(c_dec, client_challenge);
 
 	/* Receive server reply and check challenges */
 	/* TODO: do a timeout here. */
