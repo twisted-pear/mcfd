@@ -6,21 +6,18 @@
 
 int const_cmp(const unsigned char *s1, const unsigned char *s2, size_t n)
 {
-	unsigned char accum = 0;
+	unsigned char ret = 0;
 
 	size_t i;
 	for (i = 0; i < n; i++) {
-		accum |= s1[i] ^ s2[i];
+		ret |= s1[i] ^ s2[i];
 	}
 
 	/* Normalize return value. */
-	int ret = 0;
-	for (i = 0; i < sizeof(accum) * 8; i++) {
-		ret |= accum & 0x1;
-		accum >>= 1;
-	}
+	ret = (ret >> 4) | (ret & 0x0F);
+	ret = (ret >> 2) | (ret & 0x03);
+	ret = (ret >> 1) | (ret & 0x01);
 
-	assert(accum == 0);
 	assert(ret == 1 || ret == 0);
 
 	return ret;
