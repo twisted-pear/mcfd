@@ -1,0 +1,8 @@
+reduce capacity of crypto sponge and decrease overhead
+donkeySponge and monkeyDuplex?
+http://insanecoding.blogspot.co.at/2014/05/a-good-idea-with-bad-usage-devurandom.html
+investigate compiler optimization problems and prevent bad optimizations
+separate Keccak stuff from MCFD
+Keccak based rng?
+allow usage of NaCl instead of Keccak primitives?
+handle TODOs in code
