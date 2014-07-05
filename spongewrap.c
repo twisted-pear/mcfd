@@ -18,8 +18,8 @@ static void duplex_with_frame_bit(spongewrap *w, const unsigned char *in,
 		const size_t out_byte_len, bool frame_bit)
 {
 	assert(w != NULL);
-	assert(in != NULL || in_byte_len == 0);
-	assert(out != NULL || out_byte_len == 0);
+	assert((in != NULL) | (in_byte_len == 0));
+	assert((out != NULL) | (out_byte_len == 0));
 	assert(in_byte_len <= w->block_size);
 	assert(out_byte_len <= w->block_size);
 
@@ -185,11 +185,11 @@ int spongewrap_wrap(spongewrap *w, const unsigned char *a, const size_t a_byte_l
 		unsigned char *t, const size_t t_byte_len)
 {
 	assert(w != NULL);
-	assert(a != NULL || a_byte_len == 0);
-	assert(b != NULL || b_byte_len == 0);
-	assert(c != NULL || b_byte_len == 0);
-	assert(t != NULL || t_byte_len == 0);
-	assert(b != c || b == NULL);
+	assert((a != NULL) | (a_byte_len == 0));
+	assert((b != NULL) | (b_byte_len == 0));
+	assert((c != NULL) | (b_byte_len == 0));
+	assert((t != NULL) | (t_byte_len == 0));
+	assert((b != c) | (b == NULL));
 
 	size_t i;
 	size_t block_size = w->block_size;
@@ -266,11 +266,11 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 		const size_t t_byte_len, unsigned char *b)
 {
 	assert(w != NULL);
-	assert(a != NULL || a_byte_len == 0);
-	assert(b != NULL || c_byte_len == 0);
-	assert(c != NULL || c_byte_len == 0);
-	assert(t != NULL || t_byte_len == 0);
-	assert(b != c || b == NULL);
+	assert((a != NULL) | (a_byte_len == 0));
+	assert((b != NULL) | (c_byte_len == 0));
+	assert((c != NULL) | (c_byte_len == 0));
+	assert((t != NULL) | (t_byte_len == 0));
+	assert((b != c) | (b == NULL));
 
 	size_t i;
 	size_t block_size = w->block_size;
@@ -350,7 +350,7 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 	}
 
 	ret = (ret != 0);
-	assert(ret == 1 || ret == 0);
+	assert((ret == 1) | (ret == 0));
 
 	/* Just in case. */
 	spongewrap_clear_buffers(w);
@@ -361,9 +361,9 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 		mask |= (ret << i);
 	}
 
-	assert(ret == 0 || mask == 0xFF);
-	assert(ret == 1 || mask == 0x00);
-	assert(mask == 0x00 || mask == 0xFF);
+	assert((ret == 0) | (mask == 0xFF));
+	assert((ret == 1) | (mask == 0x00));
+	assert((mask == 0x00) | (mask == 0xFF));
 
 	/* If the computed tag was invalid, destroy any plaintext we produced to make
 	 * sure the caller doesn't use it.

@@ -206,7 +206,6 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 	assert(0);
 }
 
-/* TODO: investigate timing impact of asserts */
 /* TODO: speed up transmission (a lot) */
 /* TODO: add more meaningful output */
 int main(int argc, char *const *argv)

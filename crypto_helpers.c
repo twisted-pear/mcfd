@@ -31,7 +31,7 @@ int timingsafe_bcmp(const void *s1, const void *s2, const size_t n)
 void xor_and_permute_block(unsigned char *state, const size_t rate, permutation *p,
 		const unsigned char *input)
 {
-	assert(state != NULL && p != NULL && rate > 0 && input != NULL);
+	assert((state != NULL) & (p != NULL) & (rate > 0) & (input != NULL));
 
 	size_t i;
 	for (i = 0; i < rate / 8; i++) {

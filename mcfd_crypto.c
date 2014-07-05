@@ -34,10 +34,10 @@ static void nonce_succ(unsigned char *nonce)
 		accum = (accum >> 4) | (accum & 0x0F);
 		accum = (accum >> 2) | (accum & 0x03);
 		accum = (accum >> 1) | (accum & 0x01);
-		assert(accum == 0 || accum == 1);
+		assert((accum == 0) | (accum == 1));
 
 		carry &= ~accum;
-		assert(carry == 0 || carry == 1);
+		assert((carry == 0) | (carry == 1));
 	}
 }
 

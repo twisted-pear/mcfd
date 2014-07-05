@@ -105,8 +105,8 @@ int duplex_duplexing(duplex *dp, const unsigned char *input, const size_t input_
 		unsigned char *output, const size_t output_bit_len)
 {
 	assert(dp != NULL);
-	assert(input != NULL || input_bit_len == 0);
-	assert(output != NULL || output_bit_len == 0);
+	assert((input != NULL) | (input_bit_len == 0));
+	assert((output != NULL) | (output_bit_len == 0));
 
 	struct internals *internal = (struct internals *) dp->internal;
 

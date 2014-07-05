@@ -96,7 +96,7 @@ void sponge_free(sponge *sp)
 
 int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit_len)
 {
-	assert(sp != NULL && input != NULL);
+	assert((sp != NULL) & (input != NULL));
 
 	struct internals *internal = (struct internals *) sp->internal;
 
@@ -167,7 +167,7 @@ int sponge_absorb_final(sponge *sp)
 
 int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_len)
 {
-	assert(sp != NULL && output != NULL);
+	assert((sp != NULL) & (output != NULL));
 
 	struct internals *internal = (struct internals *) sp->internal;
 
