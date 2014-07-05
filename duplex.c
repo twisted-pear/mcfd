@@ -12,6 +12,14 @@ struct internals {
 	size_t width;
 };
 
+void duplex_clear_buffers(duplex *dp)
+{
+	assert(dp != NULL);
+
+	struct internals *internal = (struct internals *) dp->internal;
+	explicit_bzero(internal->remaining, (dp->rate + 7) / 8);
+}
+
 duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 {
 	assert(f != NULL && p != NULL);
@@ -79,12 +87,13 @@ void duplex_free(duplex *dp)
 	assert(dp != NULL);
 	assert(dp->internal != NULL);
 
+	duplex_clear_buffers(dp);
+
 	struct internals *internal = (struct internals *) dp->internal;
 
 	explicit_bzero(internal->state, internal->width / 8);
 	free(internal->state);
 
-	explicit_bzero(internal->remaining, (dp->rate + 7) / 8);
 	free(internal->remaining);
 
 	free(internal);
@@ -108,9 +117,6 @@ int duplex_duplexing(duplex *dp, const unsigned char *input, const size_t input_
 	if (output_bit_len > dp->rate) {
 		return 1;
 	}
-
-	/* FIXME: probably useless */
-	explicit_bzero(internal->remaining, (dp->rate + 7) / 8);
 
 	memcpy(internal->remaining, input, (input_bit_len + 7) / 8);
 

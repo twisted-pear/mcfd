@@ -25,7 +25,7 @@ static struct dgram_t dgram;
 #define CRYPT_SIZE (sizeof(dgram) + MCFD_TAG_BYTES)
 
 /* Make sure this is at least >= CRYPT_SIZE and large enough for mcfd_auth. */
-#define BUF_SIZE 4096
+#define BUF_SIZE 1200
 static unsigned char buf[BUF_SIZE];
 
 void clear_buffers(void)

@@ -26,9 +26,6 @@ static void duplex_with_frame_bit(spongewrap *w, const unsigned char *in,
 	struct internals *internal = (struct internals *) w->internal;
 	assert(internal != NULL);
 
-	/* FIXME: probably useless */
-	explicit_bzero(internal->buf, w->block_size + 1);
-
 	memcpy(internal->buf, in, in_byte_len);
 
 	internal->buf[in_byte_len] = frame_bit ? 0x80 : 0x00;
@@ -58,6 +55,17 @@ static void input_key(spongewrap *w, const unsigned char *key, const size_t key_
 	}
 
 	duplex_with_frame_bit(w, k, bytes_remaining, NULL, 0, false);
+}
+
+static void spongewrap_clear_buffers(spongewrap *w)
+{
+	assert(w != NULL);
+	assert(w->internal != NULL);
+
+	struct internals *internal = (struct internals *) w->internal;
+
+	duplex_clear_buffers(internal->dp);
+	explicit_bzero(internal->buf, w->block_size + 1);
 }
 
 spongewrap *spongewrap_init(permutation *f, pad *p, const size_t rate,
@@ -126,11 +134,11 @@ void spongewrap_free(spongewrap *w)
 	assert(w != NULL);
 	assert(w->internal != NULL);
 
+	spongewrap_clear_buffers(w);
+
 	struct internals *internal = (struct internals *) w->internal;
 
 	duplex_free(internal->dp);
-
-	explicit_bzero(internal->buf, w->block_size + 1);
 	free(internal->buf);
 
 	free(internal);
@@ -161,6 +169,8 @@ int spongewrap_rekey(spongewrap *w, const unsigned char *key, const size_t key_b
 		duplex_free(dp);
 		return 1;
 	}
+
+	spongewrap_clear_buffers(w);
 
 	internal->dp = dp;
 	duplex_free(old_dp);
@@ -246,8 +256,7 @@ int spongewrap_wrap(spongewrap *w, const unsigned char *a, const size_t a_byte_l
 	}
 
 	/* Just in case. */
-	unsigned char *buf = ((struct internals *) w->internal)->buf;
-	explicit_bzero(buf, block_size + 1);
+	spongewrap_clear_buffers(w);
 
 	return 0;
 }
@@ -343,7 +352,7 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 	assert(ret == 1 || ret == 0);
 
 	/* Just in case. */
-	explicit_bzero(buf, block_size + 1);
+	spongewrap_clear_buffers(w);
 
 	/* If ret == 1 then mask = 0xFF. */
 	unsigned char mask = 0;

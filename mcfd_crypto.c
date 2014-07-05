@@ -195,7 +195,7 @@ void mcfd_cipher_set_nonce(mcfd_cipher *cipher, const unsigned char *nonce)
 	assert(cipher != NULL);
 
 	if (nonce == NULL) {
-		explicit_bzero(cipher->nonce, sizeof(cipher->nonce));
+		memset(cipher->nonce, 0, sizeof(cipher->nonce));
 	} else {
 		memcpy(cipher->nonce, nonce, sizeof(cipher->nonce));
 	}
