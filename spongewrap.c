@@ -349,6 +349,7 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 		ret |= timingsafe_bcmp(t_cur, buf, t_remaining);
 	}
 
+	ret = (ret != 0);
 	assert(ret == 1 || ret == 0);
 
 	/* Just in case. */

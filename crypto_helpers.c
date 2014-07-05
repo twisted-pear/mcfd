@@ -25,11 +25,7 @@ int timingsafe_bcmp(const void *s1, const void *s2, const size_t n)
 		ret |= a[i] ^ b[i];
 	}
 
-	ret = (ret != 0);
-
-	assert(ret == 1 || ret == 0);
-
-	return ret;
+	return (ret != 0);
 }
 
 void xor_and_permute_block(unsigned char *state, const size_t rate, permutation *p,
