@@ -76,7 +76,8 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 		return 1;
 	}
 
-	if (const_cmp(server_challenge, auth_msg.challenge2, CHALLENGE_BYTES) != 0) {
+	if (timingsafe_bcmp(server_challenge, auth_msg.challenge2, CHALLENGE_BYTES)
+			!= 0) {
 		return 1;
 	}
 
@@ -184,11 +185,13 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 		return 1;
 	}
 
-	if (const_cmp(client_challenge, auth_msg.challenge2, CHALLENGE_BYTES) != 0) {
+	if (timingsafe_bcmp(client_challenge, auth_msg.challenge2, CHALLENGE_BYTES)
+			!= 0) {
 		return 1;
 	}
 
-	if (const_cmp(server_challenge, auth_msg.challenge1, CHALLENGE_BYTES) != 0) {
+	if (timingsafe_bcmp(server_challenge, auth_msg.challenge1, CHALLENGE_BYTES)
+			!= 0) {
 		return 1;
 	}
 

@@ -320,7 +320,7 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 	size_t t_next_len = t_byte_len < block_size ? t_byte_len : block_size;
 	duplex_with_frame_bit(w, b_cur, c_remaining, buf, t_next_len, false);
 
-	ret |= const_cmp(t, buf, t_next_len);
+	ret |= timingsafe_bcmp(t, buf, t_next_len);
 
 	/* Check the remainder of the tag. */
 	size_t t_remaining = t_byte_len - t_next_len;
@@ -328,7 +328,7 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 	while (t_remaining > block_size) {
 		duplex_with_frame_bit(w, NULL, 0, buf, block_size, false);
 
-		ret |= const_cmp(t_cur, buf, block_size);
+		ret |= timingsafe_bcmp(t_cur, buf, block_size);
 
 		t_remaining -= block_size;
 		t_cur += block_size;
@@ -337,7 +337,7 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 	if (t_remaining != 0) {
 		duplex_with_frame_bit(w, NULL, 0, buf, t_remaining, false);
 
-		ret |= const_cmp(t_cur, buf, t_remaining);
+		ret |= timingsafe_bcmp(t_cur, buf, t_remaining);
 	}
 
 	assert(ret == 1 || ret == 0);

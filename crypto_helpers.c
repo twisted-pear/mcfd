@@ -14,13 +14,15 @@ void explicit_bzero(void *s, const size_t n)
 	}
 }
 
-int const_cmp(const unsigned char *s1, const unsigned char *s2, size_t n)
+int timingsafe_bcmp(const void *s1, const void *s2, const size_t n)
 {
+	const unsigned char *a = s1;
+	const unsigned char *b = s2;
 	unsigned char ret = 0;
 
 	size_t i;
 	for (i = 0; i < n; i++) {
-		ret |= s1[i] ^ s2[i];
+		ret |= a[i] ^ b[i];
 	}
 
 	ret = (ret != 0);
