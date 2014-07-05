@@ -226,8 +226,8 @@ int main(int argc, char *const *argv)
 
 	/* Argument parsing */
 	int do_fork = 0;
-	char *pass;
-	size_t pass_len;
+	char *pass = NULL;
+	size_t pass_len = 0;
 	enum op_mode mode = MODE_CLIENT;
 	int opt;
 	while ((opt = getopt(argc, argv, "fk:l:s")) != EOF) {
@@ -267,7 +267,9 @@ int main(int argc, char *const *argv)
 		}
 	}
 
-	if (optind != argc - 3) {
+	assert(pass != NULL || pass_len == 0);
+
+	if (optind != argc - 3 || pass_len == 0) {
 		usage();
 	}
 
