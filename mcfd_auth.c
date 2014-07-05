@@ -106,7 +106,7 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	}
 
 	/* Destroy old partial key and nonces. */
-	memset(&auth_msg, 0, sizeof(auth_msg));
+	explicit_bzero(&auth_msg, sizeof(auth_msg));
 
 	return 0;
 }
@@ -198,7 +198,7 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	memcpy(nonce_dec, auth_msg.half_nonce1, MCFD_NONCE_BYTES / 2);
 
 	/* Destroy old partial key and nonces. */
-	memset(&auth_msg, 0, sizeof(auth_msg));
+	explicit_bzero(&auth_msg, sizeof(auth_msg));
 
 	return 0;
 }

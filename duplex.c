@@ -81,10 +81,10 @@ void duplex_free(duplex *dp)
 
 	struct internals *internal = (struct internals *) dp->internal;
 
-	memset(internal->state, 0, internal->width / 8);
+	explicit_bzero(internal->state, internal->width / 8);
 	free(internal->state);
 
-	memset(internal->remaining, 0, (dp->rate + 7) / 8);
+	explicit_bzero(internal->remaining, (dp->rate + 7) / 8);
 	free(internal->remaining);
 
 	free(internal);
@@ -110,7 +110,7 @@ int duplex_duplexing(duplex *dp, const unsigned char *input, const size_t input_
 	}
 
 	/* FIXME: probably useless */
-	memset(internal->remaining, 0, (dp->rate + 7) / 8);
+	explicit_bzero(internal->remaining, (dp->rate + 7) / 8);
 
 	memcpy(internal->remaining, input, (input_bit_len + 7) / 8);
 

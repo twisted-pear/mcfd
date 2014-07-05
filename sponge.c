@@ -81,10 +81,10 @@ void sponge_free(sponge *sp)
 
 	struct internals *internal = (struct internals *) sp->internal;
 
-	memset(internal->state, 0, internal->width / 8);
+	explicit_bzero(internal->state, internal->width / 8);
 	free(internal->state);
 
-	memset(internal->remaining, 0, sp->rate / 8);
+	explicit_bzero(internal->remaining, sp->rate / 8);
 	free(internal->remaining);
 
 	internal->remaining_bits = 0;
@@ -156,7 +156,7 @@ int sponge_absorb_final(sponge *sp)
 		xor_and_permute_block(internal->state, sp->rate, sp->f, internal->remaining);
 	}
 
-	memset(internal->remaining, 0, sp->rate / 8);
+	explicit_bzero(internal->remaining, sp->rate / 8);
 	internal->remaining_bits = 0;
 
 	/* Switch to squeezing. */

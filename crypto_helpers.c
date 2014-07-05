@@ -4,6 +4,16 @@
 
 #include "crypto_helpers.h"
 
+void explicit_bzero(void *s, const size_t n)
+{
+	unsigned char *p = s;
+
+	size_t i;
+	for (i = 0; i < n; i++) {
+		p[i] = 0;
+	}
+}
+
 int const_cmp(const unsigned char *s1, const unsigned char *s2, size_t n)
 {
 	unsigned char ret = 0;
@@ -13,10 +23,7 @@ int const_cmp(const unsigned char *s1, const unsigned char *s2, size_t n)
 		ret |= s1[i] ^ s2[i];
 	}
 
-	/* Normalize return value. */
-	ret = (ret >> 4) | (ret & 0x0F);
-	ret = (ret >> 2) | (ret & 0x03);
-	ret = (ret >> 1) | (ret & 0x01);
+	ret = (ret != 0);
 
 	assert(ret == 1 || ret == 0);
 

@@ -27,7 +27,7 @@ static void duplex_with_frame_bit(spongewrap *w, const unsigned char *in,
 	assert(internal != NULL);
 
 	/* FIXME: probably useless */
-	memset(internal->buf, 0, w->block_size + 1);
+	explicit_bzero(internal->buf, w->block_size + 1);
 
 	memcpy(internal->buf, in, in_byte_len);
 
@@ -130,7 +130,7 @@ void spongewrap_free(spongewrap *w)
 
 	duplex_free(internal->dp);
 
-	memset(internal->buf, 0, w->block_size + 1);
+	explicit_bzero(internal->buf, w->block_size + 1);
 	free(internal->buf);
 
 	free(internal);
@@ -247,7 +247,7 @@ int spongewrap_wrap(spongewrap *w, const unsigned char *a, const size_t a_byte_l
 
 	/* Just in case. */
 	unsigned char *buf = ((struct internals *) w->internal)->buf;
-	memset(buf, 0, block_size + 1);
+	explicit_bzero(buf, block_size + 1);
 
 	return 0;
 }
@@ -343,7 +343,7 @@ int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte
 	assert(ret == 1 || ret == 0);
 
 	/* Just in case. */
-	memset(buf, 0, block_size + 1);
+	explicit_bzero(buf, block_size + 1);
 
 	/* If ret == 1 then mask = 0xFF. */
 	unsigned char mask = 0;

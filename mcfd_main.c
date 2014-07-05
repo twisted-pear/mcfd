@@ -8,6 +8,7 @@
 
 #include <assert.h>
 
+#include "crypto_helpers.h"
 #include "mcfd_auth.h"
 #include "mcfd_common.h"
 #include "mcfd_crypto.h"
@@ -29,9 +30,9 @@ static unsigned char nonce_dec[MCFD_NONCE_BYTES];
 
 void cleanup(void)
 {
-	memset(key, 0, MCFD_KEY_BYTES);
-	memset(nonce_enc, 0, MCFD_NONCE_BYTES);
-	memset(nonce_dec, 0, MCFD_NONCE_BYTES);
+	explicit_bzero(key, MCFD_KEY_BYTES);
+	explicit_bzero(nonce_enc, MCFD_NONCE_BYTES);
+	explicit_bzero(nonce_dec, MCFD_NONCE_BYTES);
 
 	if (c_enc != NULL) {
 		mcfd_cipher_free(c_enc);
@@ -125,9 +126,9 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 
 	unblock_signals();
 
-	memset(key, 0, MCFD_KEY_BYTES);
-	memset(nonce_enc, 0, MCFD_NONCE_BYTES);
-	memset(nonce_dec, 0, MCFD_NONCE_BYTES);
+	explicit_bzero(key, MCFD_KEY_BYTES);
+	explicit_bzero(nonce_enc, MCFD_NONCE_BYTES);
+	explicit_bzero(nonce_dec, MCFD_NONCE_BYTES);
 
 	if (mode == MODE_CLIENT) {
 		plain_sock = client_sock;
@@ -293,7 +294,7 @@ int main(int argc, char *const *argv)
 		terminate(EXIT_FAILURE);
 	}
 
-	memset(pass, 0, pass_len);
+	explicit_bzero(pass, pass_len);
 
 	/* Reverse keys in one direction to simplify auth. */
 	if (mode == MODE_CLIENT) {
@@ -306,7 +307,7 @@ int main(int argc, char *const *argv)
 		c_enc = mcfd_cipher_init(NULL, key);
 	}
 
-	memset(key, 0, MCFD_KEY_BYTES);
+	explicit_bzero(key, MCFD_KEY_BYTES);
 
 	unblock_signals();
 

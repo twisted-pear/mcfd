@@ -4,6 +4,7 @@
 
 #include <assert.h>
 
+#include "crypto_helpers.h"
 #include "mcfd_crypto.h"
 #include "spongewrap.h"
 #include "sponge.h"
@@ -119,7 +120,7 @@ int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 	ret = 0;
 
 squeeze_fail:
-	memset(kdf_buf, 0, KDF_RATE / 8);
+	explicit_bzero(kdf_buf, KDF_RATE / 8);
 absorb_fail:
 	sponge_free(sp);
 sponge_fail:
@@ -182,7 +183,7 @@ void mcfd_cipher_free(mcfd_cipher *cipher)
 	keccakF_1600_free(cipher->w->f);
 	spongewrap_free(cipher->w);
 
-	memset(cipher->nonce, 0, sizeof(cipher->nonce));
+	explicit_bzero(cipher->nonce, sizeof(cipher->nonce));
 
 	free(cipher);
 }
@@ -192,7 +193,7 @@ void mcfd_cipher_set_nonce(mcfd_cipher *cipher, const unsigned char *nonce)
 	assert(cipher != NULL);
 
 	if (nonce == NULL) {
-		memset(cipher->nonce, 0, sizeof(cipher->nonce));
+		explicit_bzero(cipher->nonce, sizeof(cipher->nonce));
 	} else {
 		memcpy(cipher->nonce, nonce, sizeof(cipher->nonce));
 	}

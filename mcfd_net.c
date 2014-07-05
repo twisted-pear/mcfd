@@ -11,6 +11,8 @@
 #include "mcfd_common.h"
 #include "mcfd_net.h"
 
+#include "crypto_helpers.h"
+
 #define DGRAM_DATA_SIZE (((MCFD_BLOCK_SIZE / 8) * 8) - sizeof(unsigned short))
 
 struct dgram_t {
@@ -28,8 +30,8 @@ static unsigned char buf[BUF_SIZE];
 
 void clear_buffers(void)
 {
-	memset(buf, 0, BUF_SIZE);
-	memset(&dgram, 0, sizeof(dgram));
+	explicit_bzero(buf, BUF_SIZE);
+	explicit_bzero(&dgram, sizeof(dgram));
 }
 
 int send_crypt(int crypt_sock, mcfd_cipher *c_enc, const unsigned char *outbuf,

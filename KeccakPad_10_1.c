@@ -5,6 +5,8 @@
 
 #include "KeccakPad_10_1.h"
 
+#include "crypto_helpers.h"
+
 static int pf(pad *p, unsigned char *data, const size_t remaining_bits);
 
 enum {
@@ -49,7 +51,7 @@ static int pf(pad *p, unsigned char *data, const size_t remaining_bits)
 	size_t data_size = (p->rate + 7) / 8;
 
 	if (p->internal == (void *) PAD_STARTED || remaining_bits == 0) {
-		memset(data, 0, data_size);
+		explicit_bzero(data, data_size);
 		if (p->internal != (void *) PAD_STARTED) {
 			data[0] = 0x01;
 		}
@@ -58,7 +60,7 @@ static int pf(pad *p, unsigned char *data, const size_t remaining_bits)
 		size_t bits_in_last_byte = remaining_bits % 8;
 		data[last_byte_idx] >>= 8 - bits_in_last_byte;
 		data[last_byte_idx] |= 0x80 >> (7 - bits_in_last_byte);
-		memset(data + last_byte_idx + 1, 0, data_size - (last_byte_idx + 1));
+		explicit_bzero(data + last_byte_idx + 1, data_size - (last_byte_idx + 1));
 	}
 
 	if (remaining_bits + 1 == p->rate && p->internal != (void *) PAD_STARTED) {
