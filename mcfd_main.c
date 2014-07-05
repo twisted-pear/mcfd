@@ -74,6 +74,7 @@ enum op_mode {
 	MODE_SERVER
 };
 
+__attribute__((noreturn))
 static void handle_connection(const char *dst_addr, const char *dst_port,
 		const enum op_mode mode)
 {

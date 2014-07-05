@@ -4,7 +4,7 @@
 extern const char *progname;
 extern void cleanup(void);
 
-void terminate(const int exitCode);
+void terminate(const int exitCode) __attribute__((noreturn));
 
 void print_buf(const unsigned char *buf, size_t len);
 void print_err(const char *const action, const char *const reason);
