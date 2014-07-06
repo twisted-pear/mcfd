@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include <assert.h>
 
@@ -6,12 +7,7 @@
 
 void explicit_bzero(void *s, const size_t n)
 {
-	unsigned char *p = s;
-
-	size_t i;
-	for (i = 0; i < n; i++) {
-		p[i] = 0;
-	}
+	memset(s, 0, n);
 }
 
 int timingsafe_bcmp(const void *s1, const void *s2, const size_t n)
