@@ -62,6 +62,7 @@ void cleanup(void)
 	}
 }
 
+__attribute__((noreturn))
 static void usage(void)
 {
 	fprintf(stderr, "Usage: %s [-f] [-s] [-l <listen_addr>] -k <key> <listen_port> "
