@@ -173,9 +173,39 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 		return 1;
 	}
 
+	assert(internal->remaining_bits % 8 == 0);
+
+	/* Don't allow squeezing partial bytes.
+	 * Rationale: The reference implementation doesn't allow this either (and it's easier). */
+	if (output_bit_len % 8 != 0) {
+		return 1;
+	}
+
 	size_t bits_needed = output_bit_len;
 	unsigned char *current_out = output;
-	while (bits_needed >= sp->rate) {
+
+	/* Hand out old data first. */
+	if (internal->remaining_bits != 0) {
+		assert(internal->remaining_bits < sp->rate);
+
+		unsigned char *remaining_start = internal->remaining + (sp->rate -
+			internal->remaining_bits) / 8;
+		if (internal->remaining_bits >= output_bit_len) {
+			memcpy(output, remaining_start, output_bit_len / 8);
+			internal->remaining_bits -= output_bit_len;
+			return 0;
+		} else {
+			memcpy(output, remaining_start, internal->remaining_bits / 8);
+			bits_needed -= internal->remaining_bits;
+			current_out += internal->remaining_bits / 8;
+			internal->remaining_bits = 0;
+		}
+	}
+
+	assert(internal->remaining_bits == 0);
+	assert(bits_needed > 0);
+
+	while (bits_needed > sp->rate) {
 		/* This works because (rate % 8 == 0). */
 		if(sp->f->get(sp->f, 0, current_out, sp->rate) != 0) {
 			assert(0);
@@ -186,9 +216,16 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 		current_out += sp->rate / 8;
 	}
 
-	if (sp->f->get(sp->f, 0, current_out, bits_needed) != 0) {
+	if (sp->f->get(sp->f, 0, internal->remaining, sp->rate) != 0) {
 		assert(0);
 	}
+	sp->f->f(sp->f);
+
+	assert(bits_needed % 8 == 0);
+	assert(bits_needed <= sp->rate);
+
+	memcpy(current_out, internal->remaining, bits_needed / 8);
+	internal->remaining_bits = sp->rate - bits_needed;
 
 	return 0;
 }
