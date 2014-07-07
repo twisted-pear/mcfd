@@ -2,7 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <assert.h>
+
 #include "KeccakF-1600.h"
+
+#include "crypto_helpers.h"
 
 #define L 6
 #define W 64 /* 2^L */
@@ -13,7 +17,11 @@
 
 #define IDX(X,Y) ((RC_WIDTH * ((Y) % RC_WIDTH)) + ((X) % RC_WIDTH))
 
-static void f(permutation *p, unsigned char *state);
+static void f(permutation *p);
+static int xor(permutation *p, const size_t start_bit_idx, const unsigned char *input,
+		const size_t input_bit_len);
+static int get(permutation *p, const size_t start_bit_idx, unsigned char *output,
+		const size_t output_bit_len);
 
 permutation *keccakF_1600_init(void)
 {
@@ -22,15 +30,28 @@ permutation *keccakF_1600_init(void)
 		return NULL;
 	}
 
+	p->internal = calloc(PERMUTATION_WIDTH / 8, 1);
+	if (p->internal == NULL) {
+		free(p);
+		return NULL;
+	}
+
 	p->width = PERMUTATION_WIDTH;
 	p->f = f;
-	p->internal = NULL;
+	p->xor = xor;
+	p->get = get;
 
 	return p;
 }
 
 void keccakF_1600_free(permutation *p)
 {
+	assert(p != NULL);
+	assert(p->internal != NULL);
+
+	explicit_bzero(p->internal, p->width / 8);
+	free(p->internal);
+
 	free(p);
 }
 
@@ -175,8 +196,11 @@ static void print_state(const unsigned char *state, int round)
 	printf("\n");
 }
 
-static void f(permutation *p, unsigned char *state)
+static void permute(permutation *p, unsigned char *state)
 {
+	assert(p != NULL);
+	assert(state != NULL);
+
 	uint64_t *state_as_lanes = (uint64_t *) state;
 
 	int i;
@@ -187,4 +211,98 @@ static void f(permutation *p, unsigned char *state)
 		chi(state_as_lanes);
 		iota(state_as_lanes, i);
 	}
+}
+
+static void f(permutation *p)
+{
+	assert(p != NULL);
+	assert(p->internal != NULL);
+
+	permute(p, p->internal);
+}
+
+static int xor(permutation *p, const size_t start_bit_idx, const unsigned char *input,
+		const size_t input_bit_len)
+{
+	assert(p != NULL);
+	assert(p->internal != NULL);
+
+	assert((input != NULL) | (input_bit_len == 0));
+
+	if (start_bit_idx % 8 != 0) {
+		return 1;
+	}
+
+	size_t width_bytes = p->width / 8;
+	size_t si = start_bit_idx / 8;
+
+	if (si >= width_bytes) {
+		return 1;
+	}
+
+	if (width_bytes - si < (input_bit_len + 7) / 8) {
+		return 1;
+	}
+
+	unsigned char *state = p->internal;
+	size_t input_byte_len = input_bit_len / 8;
+	size_t ii = 0;
+	for (; ii < input_byte_len; si++, ii++) {
+		assert(si < width_bytes);
+		state[si] ^= input[ii];
+	}
+
+	/* Handle the last byte and make sure we only use the relevant bits. */
+	size_t remaining_bits = input_bit_len % 8;
+	if (remaining_bits != 0) {
+		assert(si < width_bytes);
+
+		unsigned char last_byte = input[ii];
+		last_byte &= (1 << remaining_bits) - 1;
+		state[si] ^= last_byte;
+	}
+
+	return 0;
+}
+
+static int get(permutation *p, const size_t start_bit_idx, unsigned char *output,
+		const size_t output_bit_len)
+{
+	assert(p != NULL);
+	assert(p->internal != NULL);
+
+	assert((output != NULL) | (output_bit_len == 0));
+
+	if (start_bit_idx % 8 != 0) {
+		return 1;
+	}
+
+	size_t width_bytes = p->width / 8;
+	size_t si = start_bit_idx / 8;
+
+	if (si >= width_bytes) {
+		return 1;
+	}
+
+	if (width_bytes - si < (output_bit_len + 7) / 8) {
+		return 1;
+	}
+
+	unsigned char *state = p->internal;
+	size_t output_byte_len = output_bit_len / 8;
+
+	assert(output_byte_len <= width_bytes - si);
+
+	memcpy(output, state + si, output_byte_len);
+
+	size_t remaining_bits = output_bit_len % 8;
+	if (remaining_bits != 0) {
+		assert(si + output_byte_len < width_bytes);
+
+		unsigned char last_byte = state[si + output_byte_len];
+		last_byte <<= 8 - remaining_bits;
+		output[output_byte_len] = last_byte;
+	}
+
+	return 0;
 }

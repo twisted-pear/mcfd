@@ -7,7 +7,6 @@
 #include "crypto_helpers.h"
 
 struct internals {
-	unsigned char *state;
 	unsigned char *remaining;
 	size_t remaining_bits;
 	size_t width;
@@ -50,16 +49,8 @@ sponge *sponge_init(permutation *f, pad *p, const size_t rate)
 
 	struct internals *internal = (struct internals *) sp->internal;
 
-	internal->state = calloc(f->width / 8, 1);
-	if (internal->state == NULL) {
-		free(internal);
-		free(sp);
-		return NULL;
-	}
-
 	internal->remaining = calloc(rate / 8, 1);
 	if (internal->remaining == NULL) {
-		free(internal->state);
 		free(internal);
 		free(sp);
 		return NULL;
@@ -80,9 +71,6 @@ void sponge_free(sponge *sp)
 	assert(sp->internal != NULL);
 
 	struct internals *internal = (struct internals *) sp->internal;
-
-	explicit_bzero(internal->state, internal->width / 8);
-	free(internal->state);
 
 	explicit_bzero(internal->remaining, sp->rate / 8);
 	free(internal->remaining);
@@ -119,7 +107,10 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 		bits_needed = sp->rate - internal->remaining_bits;
 		memcpy(internal->remaining + internal->remaining_bits / 8, input, bits_needed / 8);
 
-		xor_and_permute_block(internal->state, sp->rate, sp->f, internal->remaining);
+		if (sp->f->xor(sp->f, 0, internal->remaining, sp->rate) != 0) {
+			assert(0);
+		}
+		sp->f->f(sp->f);
 	}
 
 	/* Absorb full blocks in the input. */
@@ -127,7 +118,10 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 	const unsigned char *begin_full = input + bits_needed / 8;
 
 	while (remaining_bit_len >= sp->rate) {
-		xor_and_permute_block(internal->state, sp->rate, sp->f, begin_full);
+		if (sp->f->xor(sp->f, 0, begin_full, sp->rate) != 0) {
+			assert(0);
+		}
+		sp->f->f(sp->f);
 
 		remaining_bit_len -= sp->rate;
 		begin_full += sp->rate / 8;
@@ -153,7 +147,10 @@ int sponge_absorb_final(sponge *sp)
 
 	/* Apply padding and add last block. */
 	while (sp->p->pf(sp->p, internal->remaining, internal->remaining_bits)) {
-		xor_and_permute_block(internal->state, sp->rate, sp->f, internal->remaining);
+		if (sp->f->xor(sp->f, 0, internal->remaining, sp->rate) != 0) {
+			assert(0);
+		}
+		sp->f->f(sp->f);
 	}
 
 	explicit_bzero(internal->remaining, sp->rate / 8);
@@ -176,27 +173,21 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 		return 1;
 	}
 
-	size_t bytes_needed = output_bit_len / 8;
-	size_t rate_size_bytes = sp->rate / 8;
-
+	size_t bits_needed = output_bit_len;
 	unsigned char *current_out = output;
-	while (bytes_needed >= rate_size_bytes) {
+	while (bits_needed >= sp->rate) {
 		/* This works because (rate % 8 == 0). */
-		memcpy(current_out, internal->state, rate_size_bytes);
-		sp->f->f(sp->f, internal->state);
+		if(sp->f->get(sp->f, 0, current_out, sp->rate) != 0) {
+			assert(0);
+		}
+		sp->f->f(sp->f);
 
-		bytes_needed -= rate_size_bytes;
-		current_out += rate_size_bytes;
+		bits_needed -= sp->rate;
+		current_out += sp->rate / 8;
 	}
 
-	memcpy(current_out, internal->state, bytes_needed);
-	current_out += bytes_needed;
-	
-	size_t remaining_bits = output_bit_len % 8;
-	if (remaining_bits != 0) {
-		unsigned char last_byte = internal->state[bytes_needed];
-		last_byte <<= 8 - remaining_bits;
-		*current_out = last_byte;
+	if (sp->f->get(sp->f, 0, current_out, bits_needed) != 0) {
+		assert(0);
 	}
 
 	return 0;

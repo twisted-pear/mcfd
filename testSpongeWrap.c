@@ -20,18 +20,28 @@
 
 #define ERR_TOGGLE_BITS 0x10
 
-static int testRunner(permutation *f, pad *p, size_t rate, size_t block_size,
+static int testRunner(pad *p, size_t rate, size_t block_size,
 		const unsigned char *key, const size_t key_byte_len,
 		int (*test)(spongewrap*, spongewrap*))
 {
 	int ret = 1;
 
-	spongewrap *w_enc = spongewrap_init(f, p, rate, block_size, key, key_byte_len);
+	permutation *f1 = keccakF_1600_init();
+	if (f1 == NULL) {
+		goto f1_fail;
+	}
+
+	permutation *f2 = keccakF_1600_init();
+	if (f2 == NULL) {
+		goto f2_fail;
+	}
+
+	spongewrap *w_enc = spongewrap_init(f1, p, rate, block_size, key, key_byte_len);
 	if (w_enc == NULL) {
 		goto enc_fail;
 	}
 
-	spongewrap *w_dec = spongewrap_init(f, p, rate, block_size, key, key_byte_len);
+	spongewrap *w_dec = spongewrap_init(f2, p, rate, block_size, key, key_byte_len);
 	if (w_dec == NULL) {
 		goto dec_fail;
 	}
@@ -43,6 +53,10 @@ static int testRunner(permutation *f, pad *p, size_t rate, size_t block_size,
 dec_fail:
 	spongewrap_free(w_enc);
 enc_fail:
+	keccakF_1600_free(f2);
+f2_fail:
+	keccakF_1600_free(f1);
+f1_fail:
 
 	return ret;
 }
@@ -284,43 +298,36 @@ static int testSpongeWrap_internal(size_t rate, size_t block_size,
 {
 	int ret = 1;
 
-	permutation *f = keccakF_1600_init();
-	if (f == NULL) {
-		goto f_fail;
-	}
-
 	pad *p = keccakPad_10_1_init(rate);
 	if (p == NULL) {
 		goto pad_fail;
 	}
 
-	if (testRunner(f, p, rate, block_size, key, key_byte_len, testEmpty_a_b) != 0) {
+	if (testRunner(p, rate, block_size, key, key_byte_len, testEmpty_a_b) != 0) {
 		goto fail;
 	}
 
-	if (testRunner(f, p, rate, block_size, key, key_byte_len,
-				testEncDec_empty_a) != 0) {
+	if (testRunner(p, rate, block_size, key, key_byte_len, testEncDec_empty_a) != 0) {
 		goto fail;
 	}
 
-	if (testRunner(f, p, rate, block_size, key, key_byte_len,
-				testEncDec_empty_b) != 0) {
+	if (testRunner(p, rate, block_size, key, key_byte_len, testEncDec_empty_b) != 0) {
 		goto fail;
 	}
 
-	if (testRunner(f, p, rate, block_size, key, key_byte_len, testEncDec) != 0) {
+	if (testRunner(p, rate, block_size, key, key_byte_len, testEncDec) != 0) {
 		goto fail;
 	}
 
-	if (testRunner(f, p, rate, block_size, key, key_byte_len, testInvalid_tag) != 0) {
+	if (testRunner(p, rate, block_size, key, key_byte_len, testInvalid_tag) != 0) {
 		goto fail;
 	}
 
-	if (testRunner(f, p, rate, block_size, key, key_byte_len, testInvalid_a) != 0) {
+	if (testRunner(p, rate, block_size, key, key_byte_len, testInvalid_a) != 0) {
 		goto fail;
 	}
 
-	if (testRunner(f, p, rate, block_size, key, key_byte_len, testInvalid_c) != 0) {
+	if (testRunner(p, rate, block_size, key, key_byte_len, testInvalid_c) != 0) {
 		goto fail;
 	}
 
@@ -329,8 +336,6 @@ static int testSpongeWrap_internal(size_t rate, size_t block_size,
 fail:
 	keccakPad_10_1_free(p);
 pad_fail:
-	keccakF_1600_free(f);
-f_fail:
 
 	return ret;
 }

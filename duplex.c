@@ -7,7 +7,6 @@
 #include "crypto_helpers.h"
 
 struct internals {
-	unsigned char *state;
 	unsigned char *remaining;
 	size_t width;
 };
@@ -62,16 +61,8 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 
 	struct internals *internal = (struct internals *) dp->internal;
 
-	internal->state = calloc(f->width / 8, 1);
-	if (internal->state == NULL) {
-		free(internal);
-		free(dp);
-		return NULL;
-	}
-
 	internal->remaining = calloc((rate + 7) / 8, 1);
 	if (internal->remaining == NULL) {
-		free(internal->state);
 		free(internal);
 		free(dp);
 		return NULL;
@@ -90,9 +81,6 @@ void duplex_free(duplex *dp)
 	duplex_clear_buffers(dp);
 
 	struct internals *internal = (struct internals *) dp->internal;
-
-	explicit_bzero(internal->state, internal->width / 8);
-	free(internal->state);
 
 	free(internal->remaining);
 
@@ -124,20 +112,18 @@ int duplex_duplexing(duplex *dp, const unsigned char *input, const size_t input_
 	if (dp->p->pf(dp->p, internal->remaining, input_bit_len) == 0) {
 		assert(0);
 	}
-	xor_and_permute_block(internal->state, dp->rate, dp->f, internal->remaining);
+
+	if (dp->f->xor(dp->f, 0, internal->remaining, dp->rate) != 0) {
+		assert(0);
+	}
+	dp->f->f(dp->f);
+
 	if (dp->p->pf(dp->p, internal->remaining, input_bit_len) != 0) {
 		assert(0);
 	}
 
-	memcpy(output, internal->state, output_bit_len / 8);
-
-	/* Handle the last byte and make sure we only use the relevant bits. */
-	size_t remaining_bits = output_bit_len % 8;
-	size_t last_idx = output_bit_len / 8;
-	if (remaining_bits != 0) {
-		unsigned char last_byte = internal->state[last_idx];
-		last_byte <<= 8 - remaining_bits;
-		output[last_idx] = last_byte;
+	if (dp->f->get(dp->f, 0, output, output_bit_len) != 0) {
+		assert(0);
 	}
 
 	return 0;
