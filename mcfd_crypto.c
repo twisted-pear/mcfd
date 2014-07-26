@@ -46,6 +46,7 @@ int mcfd_get_random(unsigned char *outbuf, const size_t outbuf_size)
 {
 	int ret = 1;
 
+	/* TODO: use unbuffered IO, see https://bugzilla.mozilla.org/show_bug.cgi?id=927230 */
 	FILE *f = fopen("/dev/urandom", "rb");
 	if (f == NULL) {
 		goto fail_open;
