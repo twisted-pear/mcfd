@@ -26,12 +26,12 @@ static int testRunner(pad *p, size_t rate, size_t block_size,
 {
 	int ret = 1;
 
-	permutation *f1 = keccakF_1600_init();
+	permutation *f1 = keccakF_1600_init(rate);
 	if (f1 == NULL) {
 		goto f1_fail;
 	}
 
-	permutation *f2 = keccakF_1600_init();
+	permutation *f2 = keccakF_1600_init(rate);
 	if (f2 == NULL) {
 		goto f2_fail;
 	}

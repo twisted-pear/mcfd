@@ -75,7 +75,7 @@ int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 
 	int ret = 1;
 
-	permutation *f = keccakF_1600_init();
+	permutation *f = keccakF_1600_init(KDF_RATE);
 	if (f == NULL) {
 		goto permutation_fail;
 	}
@@ -138,7 +138,7 @@ mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned ch
 {
 	assert(key != NULL);
 
-	permutation *f = keccakF_1600_init();
+	permutation *f = keccakF_1600_init(SPONGEWRAP_RATE);
 	if (f == NULL) {
 		goto permutation_fail;
 	}

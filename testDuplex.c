@@ -21,7 +21,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 
 void testDuplexOneInstance(FILE *f, unsigned int rate, unsigned int capacity)
 {
-    permutation *pf = keccakF_1600_init();
+    permutation *pf = keccakF_1600_init(rate);
     pad *p = keccakPad_10_1_init(rate);
     duplex *duplex = duplex_init(pf, p, rate);
 
