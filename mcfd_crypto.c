@@ -1,6 +1,9 @@
-#include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <assert.h>
 
@@ -44,22 +47,63 @@ static void nonce_succ(unsigned char *nonce)
 /* TODO: how about replacing this with the PRNG from the duplex paper? */
 int mcfd_get_random(unsigned char *outbuf, const size_t outbuf_size)
 {
+	assert(outbuf != NULL);
+
 	int ret = 1;
 
-	/* TODO: use unbuffered IO, see https://bugzilla.mozilla.org/show_bug.cgi?id=927230 */
-	FILE *f = fopen("/dev/urandom", "rb");
-	if (f == NULL) {
-		goto fail_open;
+	if (outbuf_size > SSIZE_MAX || outbuf_size == 0) {
+		return 1;
 	}
 
-	if (fread(outbuf, 1, outbuf_size, f) != outbuf_size) {
-		goto fail_read;
+	int fd = -1;
+	while (1) {
+		fd = open("/dev/urandom", O_RDONLY);
+		if (fd >= 0) {
+			break;
+		}
+
+		if (errno != EINTR) {
+			goto fail_open;
+		}
 	}
+
+	assert(fd >= 0);
+
+	size_t bytes_needed = outbuf_size;
+	unsigned char *cur_outbuf = outbuf;
+	ssize_t nread = 0;
+	while (bytes_needed > 0) {
+		nread = read(fd, cur_outbuf, bytes_needed);
+		if (nread < 0) {
+			if (errno != EINTR) {
+				goto fail_read;
+			}
+
+			continue;
+		}
+
+		/* EOF? */
+		if (nread == 0) {
+			goto fail_read;
+		}
+
+		assert(bytes_needed <= SSIZE_MAX);
+		assert(nread <= bytes_needed);
+
+		bytes_needed -= nread;
+		cur_outbuf += nread;
+	}
+
+	assert(bytes_needed == 0);
+	assert(cur_outbuf == outbuf + outbuf_size);
 
 	ret = 0;
+	goto success;
 
 fail_read:
-	fclose(f);
+	explicit_bzero(outbuf, outbuf_size);
+success:
+	close(fd);
 fail_open:
 
 	return ret;
