@@ -239,7 +239,7 @@ int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc)
 	int ret = -1;
 
 	ssize_t rlen = -1;
-	while (1) {
+	for (;;) {
 		rlen = recv(plain_sock, dgram.data, DGRAM_DATA_SIZE, 0);
 
 		if (rlen > 0) {

@@ -56,7 +56,7 @@ int mcfd_get_random(unsigned char *outbuf, const size_t outbuf_size)
 	}
 
 	int fd = -1;
-	while (1) {
+	for (;;) {
 		fd = open("/dev/urandom", O_RDONLY);
 		if (fd >= 0) {
 			break;
