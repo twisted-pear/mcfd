@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <string.h>
@@ -24,7 +25,8 @@ static struct dgram_t dgram;
 
 #define CRYPT_SIZE (sizeof(dgram) + MCFD_TAG_BYTES)
 
-/* Make sure this is at least >= CRYPT_SIZE and large enough for mcfd_auth. */
+/* Make sure this is at least >= CRYPT_SIZE, large enough for mcfd_auth and
+ * <= SSIZE_MAX. */
 #define BUF_SIZE 1200
 static unsigned char buf[BUF_SIZE];
 
@@ -34,84 +36,159 @@ void clear_buffers(void)
 	explicit_bzero(&dgram, sizeof(dgram));
 }
 
-int send_crypt(int crypt_sock, mcfd_cipher *c_enc, const unsigned char *outbuf,
+int net_send(int sock, const unsigned char *outbuf, const size_t outbuf_size)
+{
+	assert(sock != -1);
+	assert(outbuf != NULL);
+
+	if (outbuf_size > SSIZE_MAX || outbuf_size == 0) {
+		return -1;
+	}
+
+	size_t bytes_to_send = outbuf_size;
+	const unsigned char *cur_buf = outbuf;
+	ssize_t slen = 0;
+	while (bytes_to_send > 0) {
+		slen = send(sock, cur_buf, bytes_to_send, MSG_NOSIGNAL);
+
+		/* Error */
+		if (slen < 0) {
+			if (errno != EINTR) {
+				print_err("send", strerror(errno));
+				return -1;
+			}
+
+			continue;
+		}
+
+		/* Connection closed */
+		if (slen == 0) {
+			print_err("send", "no data sent");
+			return -1;
+		}
+
+		assert(bytes_to_send <= SSIZE_MAX);
+		assert(slen <= bytes_to_send);
+
+		bytes_to_send -= slen;
+		cur_buf += slen;
+	}
+
+	assert(bytes_to_send == 0);
+	assert(cur_buf == outbuf + outbuf_size);
+
+	return 0;
+}
+
+int net_recv(int sock, unsigned char *inbuf, const size_t inbuf_size)
+{
+	assert(sock != -1);
+	assert(inbuf != NULL);
+
+	if (inbuf_size > SSIZE_MAX || inbuf_size == 0) {
+		return -1;
+	}
+
+	size_t bytes_to_recv = inbuf_size;
+	unsigned char *cur_buf = inbuf;
+	ssize_t rlen = 0;
+	while (bytes_to_recv > 0) {
+		rlen = recv(sock, cur_buf, bytes_to_recv, MSG_WAITALL);
+
+		/* Error */
+		if (rlen < 0) {
+			if (errno != EINTR) {
+				print_err("receive", strerror(errno));
+				return -1;
+			}
+
+			continue;
+		}
+
+		/* Connection closed */
+		if (rlen == 0) {
+			return 1;
+		}
+
+		assert(bytes_to_recv <= SSIZE_MAX);
+		assert(rlen <= bytes_to_recv);
+
+		bytes_to_recv -= rlen;
+		cur_buf += rlen;
+	}
+
+	assert(bytes_to_recv == 0);
+	assert(cur_buf == inbuf + inbuf_size);
+
+	return 0;
+}
+
+/* No cleanup here, caller has to take care of that. */
+static int _send_crypt(int crypt_sock, mcfd_cipher *c_enc, const unsigned char *outbuf,
 		const size_t outbuf_size)
 {
 	assert(crypt_sock != -1);
 	assert(c_enc != NULL);
 	assert(outbuf != NULL);
-	assert(outbuf_size <= BUF_SIZE - MCFD_TAG_BYTES);
+	assert((BUF_SIZE >= CRYPT_SIZE) & (BUF_SIZE <= SSIZE_MAX));
 
-	int ret = -1;
+	if (outbuf_size > (size_t) (BUF_SIZE - MCFD_TAG_BYTES)) {
+		print_err("send crypt", "too much data");
+		return -1;
+	}
 
 	if (mcfd_cipher_encrypt(c_enc, outbuf, outbuf_size, buf,
 				buf + outbuf_size) != 0) {
 		print_err("encrypt", "encryption failed");
-		goto out;
+		return -1;
 	}
 
-	/* TODO: determine if we have to consider signals here */
-	int slen = send(crypt_sock, buf, outbuf_size + MCFD_TAG_BYTES, MSG_NOSIGNAL);
+	return net_send(crypt_sock, buf, outbuf_size + MCFD_TAG_BYTES);
+}
 
-	/* Error */
-	if (slen < 0) {
-		print_err("send crypt", strerror(errno));
-		goto out;
-	}
+int send_crypt(int crypt_sock, mcfd_cipher *c_enc, const unsigned char *outbuf,
+		const size_t outbuf_size)
+{
+	int ret = _send_crypt(crypt_sock, c_enc, outbuf, outbuf_size);
 
-	/* Connection closed */
-	if (slen != outbuf_size + MCFD_TAG_BYTES) {
-		print_err("send crypt", "data not sent");
-		goto out;
-	}
-
-	ret = 0;
-
-out:
 	/* Do a cleanup just in case. */
 	clear_buffers();
 
 	return ret;
 }
 
-int recv_crypt(int crypt_sock, mcfd_cipher *c_dec, unsigned char *inbuf,
+/* No cleanup here, caller has to take care of that. */
+static int _recv_crypt(int crypt_sock, mcfd_cipher *c_dec, unsigned char *inbuf,
 		const size_t inbuf_size)
 {
 	assert(crypt_sock != -1);
 	assert(c_dec != NULL);
 	assert(inbuf != NULL);
-	assert(inbuf_size <= BUF_SIZE - MCFD_TAG_BYTES);
+	assert((BUF_SIZE >= CRYPT_SIZE) & (BUF_SIZE <= SSIZE_MAX));
 
-	int ret = -1;
-
-	/* TODO: determine if we have to consider signals here */
-	int rlen = recv(crypt_sock, buf, inbuf_size + MCFD_TAG_BYTES, MSG_WAITALL);
-
-	/* Error */
-	if (rlen < 0) {
-		print_err("receive crypt", strerror(errno));
-		goto out;
+	if (inbuf_size > (size_t) (BUF_SIZE - MCFD_TAG_BYTES)) {
+		print_err("recv crypt", "too much data");
+		return -1;
 	}
 
-	/* Connection closed */
-	if (rlen == 0) {
-		ret = 1;
-		goto out;
-	}
-
-	if (rlen != inbuf_size + MCFD_TAG_BYTES) {
-		print_err("receive crypt", "data not received");
-		goto out;
+	int ret = net_recv(crypt_sock, buf, inbuf_size + MCFD_TAG_BYTES);
+	if (ret != 0) {
+		return ret;
 	}
 
 	if (mcfd_cipher_decrypt(c_dec, buf, inbuf_size, buf + inbuf_size, inbuf) != 0) {
 		print_err("decrypt", "decryption failed");
-		goto out;
+		return -1;
 	}
 
-	ret = 0;
+	return 0;
+}
 
-out:
+int recv_crypt(int crypt_sock, mcfd_cipher *c_dec, unsigned char *inbuf,
+		const size_t inbuf_size)
+{
+	int ret = _recv_crypt(crypt_sock, c_dec, inbuf, inbuf_size);
+
 	/* Do a cleanup just in case. */
 	clear_buffers();
 
@@ -124,35 +201,14 @@ int crypt_to_plain(int crypt_sock, int plain_sock, mcfd_cipher *c_dec)
 	assert(crypt_sock != -1);
 	assert(plain_sock != -1);
 	assert(c_dec != NULL);
-	assert(BUF_SIZE >= CRYPT_SIZE);
+	assert((BUF_SIZE >= CRYPT_SIZE) & (BUF_SIZE <= SSIZE_MAX));
 
-	int ret = -1;
-
-	/* TODO: determine if we have to consider signals here */
-	int rlen = recv(crypt_sock, buf, CRYPT_SIZE, MSG_WAITALL);
-
-	/* Error */
-	if (rlen < 0) {
-		print_err("receive crypt", strerror(errno));
+	int ret = _recv_crypt(crypt_sock, c_dec, (unsigned char *) &dgram, sizeof(dgram));
+	if (ret != 0) {
 		goto out;
 	}
 
-	/* Connection closed */
-	if (rlen == 0) {
-		ret = 1;
-		goto out;
-	}
-
-	if (rlen != CRYPT_SIZE) {
-		print_err("receive crypt", "data not received");
-		goto out;
-	}
-
-	if (mcfd_cipher_decrypt(c_dec, buf, sizeof(dgram), buf + sizeof(dgram),
-				(unsigned char *) &dgram) != 0) {
-		print_err("decrypt", "decryption failed");
-		goto out;
-	}
+	ret = -1;
 
 	dgram.size = ntohs(dgram.size);
 	if (dgram.size > (unsigned short) DGRAM_DATA_SIZE) {
@@ -160,24 +216,9 @@ int crypt_to_plain(int crypt_sock, int plain_sock, mcfd_cipher *c_dec)
 		goto out;
 	}
 
-	assert(dgram.size <= DGRAM_DATA_SIZE);
+	assert(dgram.size <= (unsigned short) DGRAM_DATA_SIZE);
 
-	/* TODO: determine if we have to consider signals here */
-	int slen = send(plain_sock, dgram.data, dgram.size, MSG_NOSIGNAL);
-
-	/* Error */
-	if (slen < 0) {
-		print_err("send plain", strerror(errno));
-		goto out;
-	}
-
-	/* Connection closed */
-	if (slen != dgram.size) {
-		print_err("send plain", "data not sent");
-		goto out;
-	}
-
-	ret = 0;
+	ret = net_send(plain_sock, dgram.data, dgram.size);
 
 out:
 	/* Do a cleanup just in case. */
@@ -186,56 +227,43 @@ out:
 	return ret;
 }
 
+/* TODO: use better recv and stuff. */
 int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc)
 {
 	assert(plain_sock != -1);
 	assert(crypt_sock != -1);
 	assert(c_enc != NULL);
-	assert(BUF_SIZE >= CRYPT_SIZE);
+	assert((BUF_SIZE >= CRYPT_SIZE) & (BUF_SIZE <= SSIZE_MAX));
+	assert(DGRAM_DATA_SIZE <= SSIZE_MAX);
 
 	int ret = -1;
 
-	/* TODO: determine if we have to consider signals here */
-	int rlen = recv(plain_sock, dgram.data, DGRAM_DATA_SIZE, 0);
+	ssize_t rlen = -1;
+	while (1) {
+		rlen = recv(plain_sock, dgram.data, DGRAM_DATA_SIZE, 0);
 
-	/* Error */
-	if (rlen < 0) {
-		print_err("receive plain", strerror(errno));
-		goto out;
+		if (rlen > 0) {
+			break;
+		}
+
+		/* Connection closed */
+		if (rlen == 0) {
+			ret = 1;
+			goto out;
+		}
+
+		/* Error */
+		if (errno != EINTR) {
+			print_err("receive", strerror(errno));
+			goto out;
+		}
 	}
 
-	/* Connection closed */
-	if (rlen == 0) {
-		ret = 1;
-		goto out;
-	}
-
-	assert(rlen <= DGRAM_DATA_SIZE);
+	assert((rlen <= DGRAM_DATA_SIZE) & (rlen > 0));
 
 	dgram.size = htons(rlen);
 
-	if (mcfd_cipher_encrypt(c_enc, (unsigned char *) &dgram, sizeof(dgram), buf,
-				buf + sizeof(dgram)) != 0) {
-		print_err("encrypt", "encryption failed");
-		goto out;
-	}
-
-	/* TODO: determine if we have to consider signals here */
-	int slen = send(crypt_sock, buf, CRYPT_SIZE, MSG_NOSIGNAL);
-
-	/* Error */
-	if (slen < 0) {
-		print_err("send crypt", strerror(errno));
-		goto out;
-	}
-
-	/* Connection closed */
-	if (slen != CRYPT_SIZE) {
-		print_err("send crypt", "data not sent");
-		goto out;
-	}
-
-	ret = 0;
+	ret = _send_crypt(crypt_sock, c_enc, (unsigned char *) &dgram, sizeof(dgram));
 
 out:
 	/* Do a cleanup just in case. */

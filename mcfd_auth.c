@@ -57,10 +57,7 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	}
 
 	/* Send challenge to client */
-	/* TODO: determine if we have to consider signals here */
-	if (send(crypt_sock, server_challenge, CHALLENGE_BYTES, MSG_NOSIGNAL)
-			!= CHALLENGE_BYTES) {
-		print_err("send server challenge", strerror(errno));
+	if (net_send(crypt_sock, server_challenge, CHALLENGE_BYTES) != 0) {
 		return 1;
 	}
 
@@ -147,10 +144,7 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 
 	/* Receive server callenge */
 	/* TODO: do a timeout here. */
-	/* TODO: determine if we have to consider signals here */
-	if (recv(crypt_sock, server_challenge, CHALLENGE_BYTES, MSG_WAITALL)
-			!= CHALLENGE_BYTES) {
-		print_err("receive server challenge", strerror(errno));
+	if (net_recv(crypt_sock, server_challenge, CHALLENGE_BYTES) != 0) {
 		return 1;
 	}
 
