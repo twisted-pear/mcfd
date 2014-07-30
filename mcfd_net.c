@@ -227,7 +227,6 @@ out:
 	return ret;
 }
 
-/* TODO: use better recv and stuff. */
 int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc)
 {
 	assert(plain_sock != -1);
