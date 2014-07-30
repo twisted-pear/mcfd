@@ -156,14 +156,23 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 	fds[1].revents = 0;
 
 	for (;;) {
-		/* TODO: determine if we have to consider signals here */
-		int err = poll(fds, 2, -1);
-		if (err < 0) {
-			print_err("poll", strerror(errno));
-			terminate(EXIT_FAILURE);
+		int err = -1;
+		for (;;) {
+			err = poll(fds, 2, -1);
+
+			if (err > 0) {
+				break;
+			}
+
+			assert(err < 0);
+
+			if (errno != EINTR) {
+				print_err("poll", strerror(errno));
+				terminate(EXIT_FAILURE);
+			}
 		}
 
-		assert(err != 0);
+		assert(err > 0);
 
 		struct pollfd *pfd;
 		for (pfd = fds; pfd < fds + 2; pfd++) {
