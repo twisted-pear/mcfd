@@ -146,40 +146,6 @@ void spongewrap_free(spongewrap *w)
 	free(w);
 }
 
-int spongewrap_rekey(spongewrap *w, const unsigned char *key, const size_t key_byte_len)
-{
-	assert(w != NULL);
-	assert(w->internal != NULL);
-	assert(key != NULL);
-
-	if (key_byte_len == 0) {
-		return 1;
-	}
-
-	struct internals *internal = (struct internals *) w->internal;
-
-	duplex *old_dp = internal->dp;
-
-	duplex *dp = duplex_init(w->f, w->p, w->rate);
-	if (dp == NULL) {
-		return 1;
-	}
-
-	if (w->block_size * 8 >= dp->max_duplex_rate) {
-		duplex_free(dp);
-		return 1;
-	}
-
-	spongewrap_clear_buffers(w);
-
-	internal->dp = dp;
-	duplex_free(old_dp);
-
-	input_key(w, key, key_byte_len);
-
-	return 0;
-}
-
 int spongewrap_wrap(spongewrap *w, const unsigned char *a, const size_t a_byte_len,
 		const unsigned char *b, const size_t b_byte_len, unsigned char *c,
 		unsigned char *t, const size_t t_byte_len)
