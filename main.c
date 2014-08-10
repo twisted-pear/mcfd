@@ -9,6 +9,7 @@
 extern int genKAT_main(void);
 extern void testDuplex(void);
 extern int testSpongeWrap(void);
+extern int testSpongePRG(void);
 
 int main(void)
 {
@@ -16,6 +17,10 @@ int main(void)
 	testDuplex();
 
 	if (testSpongeWrap() != 0) {
+		return 1;
+	}
+
+	if (testSpongePRG() != 0) {
 		return 1;
 	}
 
