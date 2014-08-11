@@ -4,7 +4,7 @@
 
 #include <assert.h>
 
-#include "KeccakF-1600.h"
+#include <keccak/KeccakF-1600.h>
 
 #include "crypto_helpers.h"
 

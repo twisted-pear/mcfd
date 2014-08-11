@@ -11,8 +11,8 @@
 #include "mcfd_crypto.h"
 #include "spongewrap.h"
 #include "sponge.h"
-#include "KeccakF-1600.h"
-#include "KeccakPad_10_1.h"
+#include <keccak/KeccakF-1600.h>
+#include <keccak/KeccakPad_10_1.h>
 
 #define SPONGEWRAP_RATE (MCFD_BLOCK_SIZE \
 		+ KECCAKPAD_10_1_MIN_BIT_LEN \

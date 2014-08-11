@@ -3,7 +3,7 @@
 
 #include <assert.h>
 
-#include "KeccakPad_10_1.h"
+#include <keccak/KeccakPad_10_1.h>
 
 static int pf(pad *p, unsigned char *data, const size_t remaining_bits);
 

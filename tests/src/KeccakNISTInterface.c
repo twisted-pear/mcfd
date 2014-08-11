@@ -15,8 +15,8 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #include "KeccakNISTInterface.h"
 
 #include "sponge.h"
-#include "KeccakF-1600.h"
-#include "KeccakPad_10_1.h"
+#include <keccak/KeccakF-1600.h>
+#include <keccak/KeccakPad_10_1.h>
 
 HashReturn Init(hashState *state, int hashbitlen)
 {

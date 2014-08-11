@@ -3,8 +3,8 @@
 
 #include "sponge.h"
 
-#include "KeccakPad_10_1.h"
-#include "KeccakF-1600.h"
+#include <keccak/KeccakF-1600.h>
+#include <keccak/KeccakPad_10_1.h>
 
 extern int genKAT_main(void);
 extern void testDuplex(void);

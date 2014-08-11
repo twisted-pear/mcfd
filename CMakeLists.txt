@@ -3,7 +3,6 @@ project (MCFD)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -std=c99 -D_XOPEN_SOURCE=500")
 
-include_directories (include/spongecrypt/keccak)
 include_directories (include/spongecrypt)
 add_subdirectory (include)
 

@@ -15,8 +15,8 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #include <stdlib.h>
 #include <string.h>
 
-#include "KeccakF-1600.h"
-#include "KeccakPad_10_1.h"
+#include <keccak/KeccakF-1600.h>
+#include <keccak/KeccakPad_10_1.h>
 #include "duplex.h"
 
 void testDuplexOneInstance(FILE *f, unsigned int rate, unsigned int capacity)
