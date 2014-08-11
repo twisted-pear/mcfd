@@ -1,0 +1,26 @@
+set (H_CRYPTO_COMMON
+	"${CMAKE_CURRENT_SOURCE_DIR}/permutation.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/pad.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/crypto_helpers.h")
+set_property (GLOBAL APPEND PROPERTY H_CRYPTO_COMMON
+	${H_CRYPTO_COMMON})
+
+add_subdirectory (keccak)
+
+set_property (GLOBAL APPEND PROPERTY H_SPONGE
+	"${H_CRYPTO_COMMON}"
+	"${CMAKE_CURRENT_SOURCE_DIR}/sponge.h")
+
+set (H_DUPLEX
+	"${H_CRYPTO_COMMON}"
+	"${CMAKE_CURRENT_SOURCE_DIR}/duplex.h")
+set_property (GLOBAL APPEND PROPERTY H_DUPLEX
+	${H_DUPLEX})
+
+set_property (GLOBAL APPEND PROPERTY H_SPONGEWRAP
+	"${H_DUPLEX}"
+	"${CMAKE_CURRENT_SOURCE_DIR}/spongewrap.h")
+
+set_property (GLOBAL APPEND PROPERTY H_SPONGEPRG
+	"${H_DUPLEX}"
+	"${CMAKE_CURRENT_SOURCE_DIR}/spongeprg.h")

@@ -1,0 +1,24 @@
+set (S_CRYPTO_COMMON
+        "${CMAKE_CURRENT_SOURCE_DIR}/crypto_helpers.c")
+set_property (GLOBAL APPEND PROPERTY S_CRYPTO_COMMON
+	${S_CRYPTO_COMMON})
+
+add_subdirectory (keccak)
+
+set_property (GLOBAL APPEND PROPERTY S_SPONGE
+	"${S_CRYPTO_COMMON}"
+	"${CMAKE_CURRENT_SOURCE_DIR}/sponge.c")
+
+set (S_DUPLEX
+	"${S_CRYPTO_COMMON}"
+	"${CMAKE_CURRENT_SOURCE_DIR}/duplex.c")
+set_property (GLOBAL APPEND PROPERTY S_DUPLEX
+	${S_DUPLEX})
+
+set_property (GLOBAL APPEND PROPERTY S_SPONGEWRAP
+	"${S_DUPLEX}"
+	"${CMAKE_CURRENT_SOURCE_DIR}/spongewrap.c")
+
+set_property (GLOBAL APPEND PROPERTY S_SPONGEPRG
+	"${S_DUPLEX}"
+	"${CMAKE_CURRENT_SOURCE_DIR}/spongeprg.c")

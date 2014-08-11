@@ -1,6 +1,2 @@
-*.o
-*.txt
-keccak_test
-keccak_rng
-mcfd
+build/
 .*.swp

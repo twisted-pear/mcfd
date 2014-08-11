@@ -3,7 +3,6 @@ find asserts that check things which deserve proper error handling
 donkeySponge and monkeyDuplex?
 http://insanecoding.blogspot.co.at/2014/05/a-good-idea-with-bad-usage-devurandom.html
 investigate compiler optimization problems and prevent bad optimizations
-separate Keccak stuff from MCFD
 speed up KeccakF, this one takes up the most time
 Keccak based rng?
 allow usage of NaCl instead of Keccak primitives?
