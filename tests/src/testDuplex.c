@@ -111,3 +111,10 @@ void testDuplex()
         testDuplexOneInstance(f, rate, 1600-rate);
     fclose(f);
 }
+
+int main(void)
+{
+	testDuplex();
+
+	return 0;
+}

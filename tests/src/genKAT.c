@@ -409,3 +409,8 @@ fprintBstr(FILE *fp, char *S, BitSequence *A, int L)
 
     fprintf(fp, "\n");
 }
+
+int main(void)
+{
+	return genKAT_main();
+}

@@ -37,10 +37,12 @@ get_property (H_KECCAK_RNG GLOBAL PROPERTY H_KECCAK_RNG)
 get_property (S_KECCAK_RNG GLOBAL PROPERTY S_KECCAK_RNG)
 
 add_executable (keccak_rng
-	${H_CRYPTO_COMMON} ${S_CRYPTO_COMMON}
 	${H_KECCAK} ${S_KECCAK}
 	${H_SPONGEPRG} ${S_SPONGEPRG}
 	${H_KECCAK_RNG} ${S_KECCAK_RNG})
+
+get_property (H_DUPLEX GLOBAL PROPERTY H_DUPLEX)
+get_property (S_DUPLEX GLOBAL PROPERTY S_DUPLEX)
 
 enable_testing ()
 include_directories (src/tests)
