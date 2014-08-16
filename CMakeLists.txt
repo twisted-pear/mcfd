@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 2.6)
 project (MCFD) 
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -std=c99 -D_XOPEN_SOURCE=500")
 
 include_directories (include/spongecrypt)

@@ -1,3 +1,6 @@
+find_package(Check REQUIRED)
+include_directories(${CHECK_INCLUDE_DIRS})
+
 add_subdirectory (src)
 
 get_property (S_TEST_GENKAT GLOBAL PROPERTY S_TEST_GENKAT)
