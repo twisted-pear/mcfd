@@ -47,5 +47,4 @@ get_property (H_DUPLEX GLOBAL PROPERTY H_DUPLEX)
 get_property (S_DUPLEX GLOBAL PROPERTY S_DUPLEX)
 
 enable_testing ()
-include_directories (src/tests)
 add_subdirectory (tests)
