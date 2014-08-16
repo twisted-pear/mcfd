@@ -3,6 +3,38 @@ include_directories(${CHECK_INCLUDE_DIRS})
 
 add_subdirectory (src)
 
+get_property (S_TEST_UNIT_MAIN GLOBAL PROPERTY S_TEST_UNIT_MAIN)
+macro (add_unit_test module_name misc_sources)
+	STRING(TOUPPER "${module_name}" _u_name)
+	STRING(TOLOWER "${module_name}" _l_name)
+
+	set (_header_name "H_${_u_name}")
+	set (_source_name "S_${_u_name}")
+
+	set (_test_name "S_TEST_UNIT_${_u_name}")
+	set (_exe_name "test_unit_${_l_name}")
+
+	get_property (${_test_name} GLOBAL PROPERTY ${_test_name})
+
+	add_executable (${_exe_name}
+		EXCLUDE_FROM_ALL
+		${${_header_name}} ${${_source_name}}
+		${_misc_sources}
+		${${_test_name}}
+		${S_TEST_UNIT_MAIN})
+	target_link_libraries (${_exe_name} ${CHECK_LIBRARIES})
+
+	add_test (build_${_exe_name} "${CMAKE_COMMAND}" --build
+		${CMAKE_BINARY_DIR} --target ${_exe_name})
+	add_test (run_${_exe_name} ${_exe_name})
+endmacro (add_unit_test)
+
+add_unit_test("crypto_common" "")
+add_unit_test("sponge" "")
+add_unit_test("duplex" "")
+add_unit_test("spongeprg" "")
+add_unit_test("spongewrap" "")
+
 get_property (S_TEST_GENKAT GLOBAL PROPERTY S_TEST_GENKAT)
 get_property (S_TEST_DUPLEX GLOBAL PROPERTY S_TEST_DUPLEX)
 get_property (S_TEST_SPONGEWRAP GLOBAL PROPERTY S_TEST_SPONGEWRAP)
