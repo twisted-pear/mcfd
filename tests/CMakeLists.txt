@@ -3,6 +3,10 @@ include_directories(${CHECK_INCLUDE_DIRS})
 
 add_subdirectory (src)
 
+if (CMAKE_COMPILER_IS_GNUCC)
+	SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lgcov")
+endif ()
+
 get_property (S_TEST_UNIT_MAIN GLOBAL PROPERTY S_TEST_UNIT_MAIN)
 macro (add_unit_test module_name misc_sources)
 	STRING(TOUPPER "${module_name}" _u_name)
@@ -37,8 +41,8 @@ add_unit_test("spongewrap" "")
 
 get_property (S_TEST_GENKAT GLOBAL PROPERTY S_TEST_GENKAT)
 get_property (S_TEST_DUPLEX GLOBAL PROPERTY S_TEST_DUPLEX)
-get_property (S_TEST_SPONGEWRAP GLOBAL PROPERTY S_TEST_SPONGEWRAP)
 get_property (S_TEST_SPONGEPRG GLOBAL PROPERTY S_TEST_SPONGEPRG)
+get_property (S_TEST_SPONGEWRAP GLOBAL PROPERTY S_TEST_SPONGEWRAP)
 
 add_executable (test_genKAT
 	EXCLUDE_FROM_ALL
@@ -78,15 +82,6 @@ foreach (result_file ${TEST_RESULT_FILES})
 		test_expected/${result_file})
 endforeach (result_file)
 
-add_executable (test_spongewrap
-	EXCLUDE_FROM_ALL
-	${H_KECCAK} ${S_KECCAK}
-	${H_SPONGEWRAP} ${S_SPONGEWRAP}
-	${S_TEST_SPONGEWRAP})
-add_test (build_test_spongewrap "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
-	--target test_spongewrap)
-add_test (run_test_spongewrap test_spongewrap)
-
 add_executable (test_spongeprg
 	EXCLUDE_FROM_ALL
 	${H_KECCAK} ${S_KECCAK}
@@ -95,3 +90,12 @@ add_executable (test_spongeprg
 add_test (build_test_spongeprg "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target test_spongeprg)
 add_test (run_test_spongeprg test_spongeprg)
+
+add_executable (test_spongewrap
+	EXCLUDE_FROM_ALL
+	${H_KECCAK} ${S_KECCAK}
+	${H_SPONGEWRAP} ${S_SPONGEWRAP}
+	${S_TEST_SPONGEWRAP})
+add_test (build_test_spongewrap "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
+	--target test_spongewrap)
+add_test (run_test_spongewrap test_spongewrap)

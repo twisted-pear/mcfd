@@ -1,9 +1,16 @@
 cmake_minimum_required (VERSION 2.8)
 project (MCFD) 
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
+set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -std=c99 -D_XOPEN_SOURCE=500")
+if (NOT CMAKE_BUILD_TYPE)
+	set (CMAKE_BUILD_TYPE Debug)
+endif ()
+
+if (CMAKE_COMPILER_IS_GNUCC)
+	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pedantic -std=c99 -D_XOPEN_SOURCE=500")
+	set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -fprofile-arcs -ftest-coverage")
+endif ()
 
 include_directories (include/spongecrypt)
 add_subdirectory (include)
@@ -46,5 +53,5 @@ add_executable (keccak_rng
 get_property (H_DUPLEX GLOBAL PROPERTY H_DUPLEX)
 get_property (S_DUPLEX GLOBAL PROPERTY S_DUPLEX)
 
-enable_testing ()
+include (CTest)
 add_subdirectory (tests)
