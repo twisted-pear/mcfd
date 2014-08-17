@@ -68,7 +68,7 @@ int net_send(int sock, const unsigned char *outbuf, const size_t outbuf_size)
 		}
 
 		assert(bytes_to_send <= SSIZE_MAX);
-		assert(slen <= bytes_to_send);
+		assert(slen <= (ssize_t) bytes_to_send);
 
 		bytes_to_send -= slen;
 		cur_buf += slen;
@@ -111,7 +111,7 @@ int net_recv(int sock, unsigned char *inbuf, const size_t inbuf_size)
 		}
 
 		assert(bytes_to_recv <= SSIZE_MAX);
-		assert(rlen <= bytes_to_recv);
+		assert(rlen <= (ssize_t) bytes_to_recv);
 
 		bytes_to_recv -= rlen;
 		cur_buf += rlen;
@@ -261,7 +261,7 @@ int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc)
 		}
 	}
 
-	assert((rlen <= DGRAM_DATA_SIZE) & (rlen > 0));
+	assert((rlen <= (ssize_t) DGRAM_DATA_SIZE) & (rlen > 0));
 
 	dgram.size = htons(rlen);
 

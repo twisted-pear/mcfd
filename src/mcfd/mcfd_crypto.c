@@ -88,7 +88,7 @@ int mcfd_get_random(unsigned char *outbuf, const size_t outbuf_size)
 		}
 
 		assert(bytes_needed <= SSIZE_MAX);
-		assert(nread <= bytes_needed);
+		assert(nread <= (ssize_t) bytes_needed);
 
 		bytes_needed -= nread;
 		cur_outbuf += nread;

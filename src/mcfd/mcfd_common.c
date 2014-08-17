@@ -34,12 +34,12 @@ void print_err(const char *const action, const char *const reason)
 	(void)fprintf(stderr, "%s [ERROR] %s: %s\n", progname, action, reason);
 }
 
-static void handle_signal(int signal)
+static void handle_signal(int signal __attribute__((unused)))
 {
 	terminate(EXIT_SUCCESS);
 }
 
-static void handle_child(int signal)
+static void handle_child(int signal __attribute__((unused)))
 {
 	/* Use this chance to collect dead children. */
 	if (waitpid(-1, NULL, WNOHANG) < 0) {

@@ -233,7 +233,8 @@ static int testInvalid_c(spongewrap **w_enc, spongewrap **w_dec, struct cipherct
 	return 0;
 }
 
-static int testEmpty_a_b(spongewrap **w_enc, spongewrap **w_dec, struct cipherctx_t *ctx)
+static int testEmpty_a_b(spongewrap **w_enc, spongewrap **w_dec,
+		struct cipherctx_t *ctx __attribute__((unused)))
 {
 	unsigned char t[T_LEN_MAX];
 
@@ -252,7 +253,7 @@ static int testEmpty_a_b(spongewrap **w_enc, spongewrap **w_dec, struct cipherct
 }
 
 static int testEncDec_empty_a(spongewrap **w_enc, spongewrap **w_dec,
-		struct cipherctx_t *ctx)
+		struct cipherctx_t *ctx __attribute__((unused)))
 {
 	unsigned char b[B_LEN_MAX];
 	unsigned char c[B_LEN_MAX];
@@ -280,7 +281,7 @@ static int testEncDec_empty_a(spongewrap **w_enc, spongewrap **w_dec,
 }
 
 static int testEncDec_empty_b(spongewrap **w_enc, spongewrap **w_dec,
-		struct cipherctx_t *ctx)
+		struct cipherctx_t *ctx __attribute__((unused)))
 {
 	unsigned char a[A_LEN_MAX];
 	unsigned char t[T_LEN_MAX];
@@ -302,7 +303,8 @@ static int testEncDec_empty_b(spongewrap **w_enc, spongewrap **w_dec,
 	return 0;
 }
 
-static int testEncDec(spongewrap **w_enc, spongewrap **w_dec, struct cipherctx_t *ctx)
+static int testEncDec(spongewrap **w_enc, spongewrap **w_dec,
+		struct cipherctx_t *ctx __attribute__((unused)))
 {
 	unsigned char a[A_LEN_MAX];
 	unsigned char b[B_LEN_MAX];

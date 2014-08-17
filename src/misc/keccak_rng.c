@@ -102,7 +102,7 @@ int main(int argc, char *const *argv)
 		}
 	}
 
-	while (length > sizeof(buf)) {
+	while ((size_t) length > sizeof(buf)) {
 		if (spongeprg_fetch(g, buf, sizeof(buf)) != 0) {
 			fprintf(stderr, "ERROR: Fetch failed.\n");
 			goto out;
@@ -121,7 +121,7 @@ int main(int argc, char *const *argv)
 		goto out;
 	}
 
-	if (fwrite(buf, 1, length, outf) != length) {
+	if (fwrite(buf, 1, length, outf) != (size_t) length) {
 		fprintf(stderr, "ERROR: Failed to write.\n");
 		goto out;
 	}
