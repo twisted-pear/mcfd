@@ -1,6 +1,3 @@
-find_package(Check REQUIRED)
-include_directories(${CHECK_INCLUDE_DIRS})
-
 add_subdirectory (src)
 
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -26,7 +23,7 @@ macro (add_unit_test module_name misc_sources)
 		${_misc_sources}
 		${${_test_name}}
 		${S_TEST_UNIT_MAIN})
-	target_link_libraries (${_exe_name} ${CHECK_LIBRARIES})
+	target_link_libraries (${_exe_name} -lcmocka)
 
 	add_test (build_${_exe_name} "${CMAKE_COMMAND}" --build
 		${CMAKE_BINARY_DIR} --target ${_exe_name})

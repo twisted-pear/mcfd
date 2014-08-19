@@ -4,11 +4,13 @@
 #include <permutation.h>
 #include <duplex.h>
 
-#include <check.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
 
-Suite *create_test_suite(void)
+int run_unit_tests(void)
 {
-	Suite *s = suite_create("Duplex");
-
-	return s;
+	return 0;
 }

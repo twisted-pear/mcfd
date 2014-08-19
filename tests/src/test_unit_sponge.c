@@ -4,168 +4,171 @@
 #include <permutation.h>
 #include <sponge.h>
 
-#include <check.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
 
 #define CREATE_WIDTH 1600
 #define CREATE_RATE 1024
 #define CREATE_MIN_RATE 2
 
-permutation *f = NULL;
-pad *p = NULL;
+static permutation *f = NULL;
+static pad *p = NULL;
 
-void sponge_init_setup(void)
+static void sponge_init_setup(void **state __attribute__((unused)))
 {
 	f = calloc(1, sizeof(permutation));
-	ck_assert_ptr_ne(f, NULL);
+	assert_non_null(f);
 
 	f->width = CREATE_WIDTH;
 
 	p = calloc(1, sizeof(pad));
-	ck_assert_ptr_ne(p, NULL);
+	assert_non_null(p);
 
 	p->rate = CREATE_RATE;
 	p->min_bit_len = CREATE_MIN_RATE;
 }
 
-void sponge_init_teardown(void)
+static void sponge_init_teardown(void **state __attribute__((unused)))
 {
 	free(f);
 	free(p);
 }
 
-START_TEST(sponge_init_f_null)
+static void sponge_init_f_null(void **state __attribute__((unused)))
 {
-	ck_assert_ptr_eq(sponge_init(NULL, p, CREATE_RATE), NULL);
+	assert_null(sponge_init(NULL, p, CREATE_RATE));
 }
-END_TEST
 
-START_TEST(sponge_init_p_null)
+static void sponge_init_p_null(void **state __attribute__((unused)))
 {
-	ck_assert_ptr_eq(sponge_init(f, NULL, CREATE_RATE), NULL);
+	assert_null(sponge_init(f, NULL, CREATE_RATE));
 }
-END_TEST
 
-START_TEST(sponge_init_rate_zero)
+static void sponge_init_rate_zero(void **state __attribute__((unused)))
 {
 	p->rate = 0;
 	p->min_bit_len = 0;
 
-	ck_assert_ptr_eq(sponge_init(f, p, 0), NULL);
+	assert_null(sponge_init(f, p, 0));
 }
-END_TEST
 
-START_TEST(sponge_init_width_zero)
+static void sponge_init_width_zero(void **state __attribute__((unused)))
 {
 	f->width = 0;
 
-	ck_assert_ptr_eq(sponge_init(f, p, CREATE_RATE), NULL);
+	assert_null(sponge_init(f, p, CREATE_RATE));
 }
-END_TEST
 
-START_TEST(sponge_init_rate_zero_width_zero)
+static void sponge_init_rate_zero_width_zero(void **state __attribute__((unused)))
 {
 	f->width = 0;
 
 	p->rate = 0;
 	p->min_bit_len = 0;
 
-	ck_assert_ptr_eq(sponge_init(f, p, 0), NULL);
+	assert_null(sponge_init(f, p, 0));
 }
-END_TEST
 
-START_TEST(sponge_init_rate_gt_width)
+static void sponge_init_rate_gt_width(void **state __attribute__((unused)))
 {
 	p->rate = CREATE_WIDTH + 8;
 
-	ck_assert_ptr_eq(sponge_init(f, p, CREATE_WIDTH + 8), NULL);
+	assert_null(sponge_init(f, p, CREATE_WIDTH + 8));
 }
-END_TEST
 
-START_TEST(sponge_init_rate_eq_width)
+static void sponge_init_rate_eq_width(void **state __attribute__((unused)))
 {
 	p->rate = CREATE_WIDTH;
 
-	ck_assert_ptr_eq(sponge_init(f, p, CREATE_WIDTH), NULL);
+	assert_null(sponge_init(f, p, CREATE_WIDTH));
 }
-END_TEST
 
-START_TEST(sponge_init_rate_ne_prate)
+static void sponge_init_rate_ne_prate(void **state __attribute__((unused)))
 {
-	ck_assert_ptr_eq(sponge_init(f, p, CREATE_RATE + 8), NULL);
+	assert_null(sponge_init(f, p, CREATE_RATE + 8));
 }
-END_TEST
 
-START_TEST(sponge_init_rate_lt_minrate)
+static void sponge_init_rate_lt_minrate(void **state __attribute__((unused)))
 {
 	p->min_bit_len = CREATE_RATE + 1;
 
-	ck_assert_ptr_eq(sponge_init(f, p, CREATE_RATE), NULL);
+	assert_null(sponge_init(f, p, CREATE_RATE));
 }
-END_TEST
 
-START_TEST(sponge_init_rate_eq_minrate)
+static void sponge_init_rate_eq_minrate(void **state __attribute__((unused)))
 {
 	p->min_bit_len = CREATE_RATE;
 
-	ck_assert_ptr_eq(sponge_init(f, p, CREATE_RATE), NULL);
+	assert_null(sponge_init(f, p, CREATE_RATE));
 }
-END_TEST
 
-START_TEST(sponge_init_rate_odd)
+static void sponge_init_rate_odd(void **state __attribute__((unused)))
 {
 	p->rate = CREATE_RATE + 1;
 
-	ck_assert_ptr_eq(sponge_init(f, p, CREATE_RATE + 1), NULL);
+	assert_null(sponge_init(f, p, CREATE_RATE + 1));
 }
-END_TEST
 
-START_TEST(sponge_init_width_odd)
+static void sponge_init_width_odd(void **state __attribute__((unused)))
 {
 	f->width = CREATE_WIDTH + 1;
 
-	ck_assert_ptr_eq(sponge_init(f, p, CREATE_RATE), NULL);
+	assert_null(sponge_init(f, p, CREATE_RATE));
 }
-END_TEST
 
-START_TEST(sponge_init_normal)
+static void sponge_init_normal(void **state __attribute__((unused)))
 {
-	p->rate = _i * 8;
+	sponge *sp = sponge_init(f, p, CREATE_RATE);
+	assert_non_null(sp);
 
-	sponge *sp = sponge_init(f, p, _i * 8);
-	ck_assert_ptr_ne(sp, NULL);
-
-	ck_assert_ptr_eq(sp->f, f);
-	ck_assert_ptr_eq(sp->p, p);
-	ck_assert_uint_eq(sp->rate, _i * 8);
+	assert_true(sp->f == f);
+	assert_true(sp->p == p);
+	assert_true(sp->rate == CREATE_RATE);
 
 	sponge_free(sp);
 }
-END_TEST
 
-Suite *create_test_suite(void)
+int run_unit_tests(void)
 {
-	Suite *s = suite_create("Sponge");
+	int res = 0;
 
-	TCase *tc_sponge_init = tcase_create("sponge_init");
-	tcase_add_checked_fixture(tc_sponge_init, sponge_init_setup,
-			sponge_init_teardown);
-	tcase_add_test(tc_sponge_init, sponge_init_f_null);
-	tcase_add_test(tc_sponge_init, sponge_init_p_null);
-	tcase_add_test(tc_sponge_init, sponge_init_rate_zero);
-	tcase_add_test(tc_sponge_init, sponge_init_width_zero);
-	tcase_add_test(tc_sponge_init, sponge_init_rate_zero_width_zero);
-	tcase_add_test(tc_sponge_init, sponge_init_rate_gt_width);
-	tcase_add_test(tc_sponge_init, sponge_init_rate_eq_width);
-	tcase_add_test(tc_sponge_init, sponge_init_rate_ne_prate);
-	tcase_add_test(tc_sponge_init, sponge_init_rate_lt_minrate);
-	tcase_add_test(tc_sponge_init, sponge_init_rate_eq_minrate);
-	tcase_add_test(tc_sponge_init, sponge_init_rate_odd);
-	tcase_add_test(tc_sponge_init, sponge_init_width_odd);
-	tcase_add_loop_test(tc_sponge_init, sponge_init_normal,
-			((CREATE_MIN_RATE + 1) + 7) / 8, (CREATE_WIDTH) / 8);
-	suite_add_tcase(s, tc_sponge_init);
+	const UnitTest sponge_init_tests[] = {
+		unit_test_setup_teardown(sponge_init_f_null, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_p_null, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_rate_zero, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_width_zero, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_rate_zero_width_zero,
+				sponge_init_setup, sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_rate_gt_width, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_rate_eq_width, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_rate_ne_prate, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_rate_lt_minrate, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_rate_eq_minrate, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_rate_odd, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_width_odd, sponge_init_setup,
+				sponge_init_teardown),
+		unit_test_setup_teardown(sponge_init_normal, sponge_init_setup,
+				sponge_init_teardown)
+	};
 
-	/* TODO: test remaining sponge functionality */
+	fprintf(stderr, "sponge_init:\n");
+	res |= run_tests(sponge_init_tests);
+	fprintf(stderr, "\n");
 
-	return s;
+	/* TODO: test remaining functionality */
+
+	return res;
 }
