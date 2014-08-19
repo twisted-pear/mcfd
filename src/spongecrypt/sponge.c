@@ -15,17 +15,23 @@ struct internals {
 
 sponge *sponge_init(permutation *f, pad *p, const size_t rate)
 {
-	assert(f != NULL && p != NULL);
+	if (f == NULL || p == NULL) {
+		return NULL;
+	}
 
 	if (rate == 0 || f->width == 0) {
 		return NULL;
 	}
 
-	if (rate > f->width) {
+	if (rate >= f->width) {
 		return NULL;
 	}
 
 	if (rate % 8 != 0 || f->width % 8 != 0) {
+		return NULL;
+	}
+
+	if (rate <= p->min_bit_len) {
 		return NULL;
 	}
 
