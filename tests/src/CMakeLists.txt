@@ -1,3 +1,10 @@
+set_property (GLOBAL APPEND PROPERTY H_LIBC_WRAPPERS
+	"${CMAKE_CURRENT_SOURCE_DIR}/libc_wrappers.h")
+set_property (GLOBAL APPEND PROPERTY S_LIBC_WRAPPERS
+	"${CMAKE_CURRENT_SOURCE_DIR}/libc_wrappers.c")
+set_property (GLOBAL APPEND PROPERTY LIBC_WRAPPERS_LINK_FLAGS
+	"-Wl,--wrap=malloc -Wl,--wrap=calloc")
+
 set_property (GLOBAL APPEND PROPERTY S_TEST_UNIT_MAIN
 	"${CMAKE_CURRENT_SOURCE_DIR}/test_unit_main.c")
 

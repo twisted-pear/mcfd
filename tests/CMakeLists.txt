@@ -5,6 +5,10 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif ()
 
 get_property (S_TEST_UNIT_MAIN GLOBAL PROPERTY S_TEST_UNIT_MAIN)
+get_property (H_LIBC_WRAPPERS GLOBAL PROPERTY H_LIBC_WRAPPERS)
+get_property (S_LIBC_WRAPPERS GLOBAL PROPERTY S_LIBC_WRAPPERS)
+get_property (LIBC_WRAPPERS_LINK_FLAGS GLOBAL PROPERTY
+	LIBC_WRAPPERS_LINK_FLAGS)
 macro (add_unit_test module_name misc_sources)
 	STRING(TOUPPER "${module_name}" _u_name)
 	STRING(TOLOWER "${module_name}" _l_name)
@@ -22,8 +26,11 @@ macro (add_unit_test module_name misc_sources)
 		${${_header_name}} ${${_source_name}}
 		${_misc_sources}
 		${${_test_name}}
+		${H_LIBC_WRAPPERS} ${S_LIBC_WRAPPERS}
 		${S_TEST_UNIT_MAIN})
-	target_link_libraries (${_exe_name} -lcmocka)
+	target_link_libraries (${_exe_name} cmocka)
+	set_target_properties(${_exe_name} PROPERTIES LINK_FLAGS
+		${LIBC_WRAPPERS_LINK_FLAGS})
 
 	add_test (build_${_exe_name} "${CMAKE_COMMAND}" --build
 		${CMAKE_BINARY_DIR} --target ${_exe_name})
