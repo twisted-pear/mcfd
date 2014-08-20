@@ -21,7 +21,9 @@ void duplex_clear_buffers(duplex *dp)
 
 duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 {
-	assert(f != NULL && p != NULL);
+	if (f == NULL || p == NULL) {
+		return NULL;
+	}
 
 	if (f->width == 0) {
 		return NULL;
@@ -31,7 +33,7 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 		return NULL;
 	}
 
-	if (rate > f->width) {
+	if (rate >= f->width) {
 		return NULL;
 	}
 
