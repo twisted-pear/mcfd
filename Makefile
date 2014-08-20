@@ -4,7 +4,7 @@ all:
 
 test:
 	mkdir -p build
-	cd build; cmake -DCMAKE_BUILD_TYPE="Debug" ..; make test
+	cd build; cmake -DCMAKE_BUILD_TYPE="Debug" ..; make test; make ExperimentalCoverage
 
 clean:
 	rm -rf build
