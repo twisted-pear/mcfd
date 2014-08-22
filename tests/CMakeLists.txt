@@ -7,6 +7,8 @@ endif ()
 get_property (S_TEST_UNIT_MAIN GLOBAL PROPERTY S_TEST_UNIT_MAIN)
 get_property (H_LIBC_WRAPPERS GLOBAL PROPERTY H_LIBC_WRAPPERS)
 get_property (S_LIBC_WRAPPERS GLOBAL PROPERTY S_LIBC_WRAPPERS)
+get_property (ALLOC_LINK_FLAGS GLOBAL PROPERTY
+	ALLOC_LINK_FLAGS)
 get_property (LIBC_WRAPPERS_LINK_FLAGS GLOBAL PROPERTY
 	LIBC_WRAPPERS_LINK_FLAGS)
 macro (add_unit_test module_name misc_sources)
@@ -29,19 +31,19 @@ macro (add_unit_test module_name misc_sources)
 		${H_LIBC_WRAPPERS} ${S_LIBC_WRAPPERS}
 		${S_TEST_UNIT_MAIN})
 	target_link_libraries (${_exe_name} cmocka)
-	set_target_properties(${_exe_name} PROPERTIES LINK_FLAGS
-		${LIBC_WRAPPERS_LINK_FLAGS})
+	set_target_properties (${_exe_name} PROPERTIES LINK_FLAGS
+		"${ALLOC_LINK_FLAGS} ${LIBC_WRAPPERS_LINK_FLAGS}")
 
 	add_test (build_${_exe_name} "${CMAKE_COMMAND}" --build
 		${CMAKE_BINARY_DIR} --target ${_exe_name})
 	add_test (run_${_exe_name} ${_exe_name})
 endmacro (add_unit_test)
 
-add_unit_test("crypto_common" "")
-add_unit_test("sponge" "")
-add_unit_test("duplex" "")
-add_unit_test("spongeprg" "")
-add_unit_test("spongewrap" "")
+add_unit_test ("crypto_common" "")
+add_unit_test ("sponge" "")
+add_unit_test ("duplex" "")
+add_unit_test ("spongeprg" "")
+add_unit_test ("spongewrap" "")
 
 get_property (S_TEST_GENKAT GLOBAL PROPERTY S_TEST_GENKAT)
 get_property (S_TEST_DUPLEX GLOBAL PROPERTY S_TEST_DUPLEX)
@@ -52,7 +54,11 @@ add_executable (test_genKAT
 	EXCLUDE_FROM_ALL
 	${H_KECCAK} ${S_KECCAK}
 	${H_SPONGE} ${S_SPONGE}
+	${H_LIBC_WRAPPERS} ${S_LIBC_WRAPPERS}
 	${S_TEST_GENKAT})
+target_link_libraries (test_genKAT cmocka)
+set_target_properties (test_genKAT PROPERTIES LINK_FLAGS
+	"${ALLOC_LINK_FLAGS}")
 add_test (build_test_genKAT "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target test_genKAT)
 add_test (run_test_genKAT test_genKAT)
@@ -61,7 +67,11 @@ add_executable (test_duplex
 	EXCLUDE_FROM_ALL
 	${H_KECCAK} ${S_KECCAK}
 	${H_DUPLEX} ${S_DUPLEX}
+	${H_LIBC_WRAPPERS} ${S_LIBC_WRAPPERS}
 	${S_TEST_DUPLEX})
+target_link_libraries (test_duplex cmocka)
+set_target_properties (test_duplex PROPERTIES LINK_FLAGS
+	"${ALLOC_LINK_FLAGS}")
 add_test (build_test_duplex "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target test_duplex)
 add_test (run_test_duplex test_duplex)
@@ -90,7 +100,11 @@ add_executable (test_spongeprg
 	EXCLUDE_FROM_ALL
 	${H_KECCAK} ${S_KECCAK}
 	${H_SPONGEPRG} ${S_SPONGEPRG}
+	${H_LIBC_WRAPPERS} ${S_LIBC_WRAPPERS}
 	${S_TEST_SPONGEPRG})
+target_link_libraries (test_spongeprg cmocka)
+set_target_properties (test_spongeprg PROPERTIES LINK_FLAGS
+	"${ALLOC_LINK_FLAGS}")
 add_test (build_test_spongeprg "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target test_spongeprg)
 add_test (run_test_spongeprg test_spongeprg)
@@ -99,7 +113,11 @@ add_executable (test_spongewrap
 	EXCLUDE_FROM_ALL
 	${H_KECCAK} ${S_KECCAK}
 	${H_SPONGEWRAP} ${S_SPONGEWRAP}
+	${H_LIBC_WRAPPERS} ${S_LIBC_WRAPPERS}
 	${S_TEST_SPONGEWRAP})
+target_link_libraries (test_spongewrap cmocka)
+set_target_properties (test_spongewrap PROPERTIES LINK_FLAGS
+	"${ALLOC_LINK_FLAGS}")
 add_test (build_test_spongewrap "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target test_spongewrap)
 add_test (run_test_spongewrap test_spongewrap)
