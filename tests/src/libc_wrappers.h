@@ -5,8 +5,16 @@
 
 #define __WRAP_ALLOC_NEW ((void *) -1)
 
+typedef enum {
+	ALLOC_MALLOC,
+	ALLOC_CALLOC
+} alloc_t;
+
 extern int __activate_wrap_alloc;
-void *__wrap_alloc(size_t nmemb, size_t size);
+void *__wrap_alloc(size_t nmemb, size_t size, alloc_t alloc);
+
+extern void __real_free(void *ptr);
+void __wrap_free(void *ptr);
 
 extern void *__real_malloc(size_t size);
 void *__wrap_malloc(size_t size);

@@ -162,7 +162,7 @@ static void sponge_init_alloc_limited(void **state __attribute__((unused)))
 		__activate_wrap_alloc = 0;
 	}
 
-	assert_null(__wrap_alloc(0, 1));
+	assert_null(__wrap_alloc(0, 1, ALLOC_MALLOC));
 	__activate_wrap_alloc = 0;
 	assert_in_range(i, 1, CREATE_MAX_ALLOCS);
 
