@@ -3,10 +3,12 @@
 
 #include <stdint.h>
 
+#include <permutation.h>
+
 typedef struct pad_t {
 	size_t rate;
 	size_t min_bit_len;
-	int (*pf)(struct pad_t *, unsigned char *, const size_t);
+	int (*pf)(struct pad_t *, permutation *, const size_t);
 	void *internal;
 } pad;
 

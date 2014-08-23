@@ -258,7 +258,7 @@ static int xor(permutation *p, const size_t start_bit_idx, const unsigned char *
 		assert(si < width_bytes);
 
 		unsigned char last_byte = input[ii];
-		last_byte &= (1 << remaining_bits) - 1;
+		last_byte >>= 8 - remaining_bits;
 		state[si] ^= last_byte;
 	}
 

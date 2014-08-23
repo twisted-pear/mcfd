@@ -152,11 +152,11 @@ int sponge_absorb_final(sponge *sp)
 	}
 
 	/* Apply padding and add last block. */
-	while (sp->p->pf(sp->p, internal->remaining, internal->remaining_bits)) {
-		if (sp->f->xor(sp->f, 0, internal->remaining, sp->rate) != 0) {
-			assert(0);
-		}
-		sp->f->f(sp->f);
+	if (sp->f->xor(sp->f, 0, internal->remaining, internal->remaining_bits) != 0) {
+		assert(0);
+	}
+	if (sp->p->pf(sp->p, sp->f, internal->remaining_bits) != 0) {
+		assert(0);
 	}
 
 	explicit_bzero(internal->remaining, sp->rate / 8);
