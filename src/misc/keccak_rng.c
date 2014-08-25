@@ -59,7 +59,7 @@ int main(int argc, char *const *argv)
 		return EXIT_FAILURE;
 	}
 
-	permutation *f = keccakF_1600_init(1026);
+	permutation *f = keccakF_1600_init();
 	if (f == NULL) {
 		fprintf(stderr, "ERROR: Failed to create permutation.\n");
 		fclose(outf);

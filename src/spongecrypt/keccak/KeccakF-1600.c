@@ -23,7 +23,7 @@ static int xor(permutation *p, const size_t start_bit_idx, const unsigned char *
 static int get(permutation *p, const size_t start_bit_idx, unsigned char *output,
 		const size_t output_bit_len);
 
-permutation *keccakF_1600_init(size_t rate_hint __attribute__((unused)))
+permutation *keccakF_1600_init(void)
 {
 	permutation *p = malloc(sizeof(permutation));
 	if (p == NULL) {

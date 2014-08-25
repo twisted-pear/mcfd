@@ -23,6 +23,11 @@ HashReturn Init(hashState *state, int hashbitlen)
     sponge *sp;
     pad *p;
 
+    permutation *f = keccakF_1600_init();
+    if (f == NULL) {
+        return FAIL;
+    }
+
     switch(hashbitlen) {
         case 0: // Default parameters, arbitrary length output
             p = keccakPad_10_1_init(1024);
@@ -40,16 +45,12 @@ HashReturn Init(hashState *state, int hashbitlen)
             p = keccakPad_10_1_init(576);
             break;
         default:
+            keccakF_1600_free(f);
             return BAD_HASHLEN;
     }
 
     if (p == NULL) {
-        return FAIL;
-    }
-
-    permutation *f = keccakF_1600_init(p->rate);
-    if (f == NULL) {
-        goto fail_permutation;
+        goto fail_pad;
     }
 
     sp = sponge_init(f, p, p->rate);
@@ -63,9 +64,9 @@ HashReturn Init(hashState *state, int hashbitlen)
     return SUCCESS;
 
 fail_sponge:
-    keccakF_1600_free(f);
-fail_permutation:
     keccakPad_10_1_free(p);
+fail_pad:
+    keccakF_1600_free(f);
 
     return FAIL;
 }

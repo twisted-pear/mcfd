@@ -40,7 +40,7 @@ static spongewrap *mkcipher(permutation *f, struct cipherctx_t *ctx)
 
 static int regenCipher(permutation **f, spongewrap **w, struct cipherctx_t *ctx)
 {
-	permutation *fn = keccakF_1600_init(ctx->rate);
+	permutation *fn = keccakF_1600_init();
 	if (fn == NULL) {
 		return 1;
 	}
@@ -63,12 +63,12 @@ static int testRunner(struct cipherctx_t *ctx, int (*test)(spongewrap**, spongew
 {
 	int ret = 1;
 
-	ctx->f_enc = keccakF_1600_init(ctx->rate);
+	ctx->f_enc = keccakF_1600_init();
 	if (ctx->f_enc == NULL) {
 		goto f_enc_fail;
 	}
 
-	ctx->f_dec = keccakF_1600_init(ctx->rate);
+	ctx->f_dec = keccakF_1600_init();
 	if (ctx->f_dec == NULL) {
 		goto f_dec_fail;
 	}
