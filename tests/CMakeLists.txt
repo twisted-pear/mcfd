@@ -40,6 +40,7 @@ macro (add_unit_test module_name misc_sources)
 endmacro (add_unit_test)
 
 add_unit_test ("crypto_common" "")
+add_unit_test ("keccak" "")
 add_unit_test ("sponge" "")
 add_unit_test ("duplex" "")
 add_unit_test ("spongeprg" "")
