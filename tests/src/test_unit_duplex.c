@@ -109,6 +109,31 @@ static void duplex_init_rate_eq_minrate(void **state __attribute__((unused)))
 	assert_null(duplex_init(f, p, CREATE_RATE));
 }
 
+static void duplex_init_rate_odd(void **state __attribute__((unused)))
+{
+	p->rate = CREATE_RATE + 1;
+
+	/* FIXME: implementations using calloc can cheat */
+	expect_in_range_count(__wrap_alloc, nmemb, 1, CREATE_MAX_ALLOC_SIZE, -1);
+	expect_any_count(__wrap_alloc, size, -1);
+	will_return_count(__wrap_alloc, __WRAP_ALLOC_NEW, -1);
+
+	__activate_wrap_alloc = 1;
+
+	duplex *dp = duplex_init(f, p, CREATE_RATE + 1);
+
+	__activate_wrap_alloc = 0;
+
+	assert_non_null(dp);
+
+	assert_true(dp->f == f);
+	assert_true(dp->p == p);
+	assert_true(dp->rate == CREATE_RATE + 1);
+	assert_true(dp->max_duplex_rate <= (CREATE_RATE + 1) - CREATE_MIN_RATE);
+
+	duplex_free(dp);
+}
+
 static void duplex_init_width_odd(void **state __attribute__((unused)))
 {
 	f->width = CREATE_WIDTH + 1;
@@ -192,7 +217,6 @@ static void duplex_init_normal(void **state __attribute__((unused)))
 	duplex_free(dp);
 }
 
-
 int run_unit_tests(void)
 {
 	int res = 0;
@@ -217,6 +241,8 @@ int run_unit_tests(void)
 		unit_test_setup_teardown(duplex_init_rate_lt_minrate, duplex_init_setup,
 				duplex_init_teardown),
 		unit_test_setup_teardown(duplex_init_rate_eq_minrate, duplex_init_setup,
+				duplex_init_teardown),
+		unit_test_setup_teardown(duplex_init_rate_odd, duplex_init_setup,
 				duplex_init_teardown),
 		unit_test_setup_teardown(duplex_init_width_odd, duplex_init_setup,
 				duplex_init_teardown),
