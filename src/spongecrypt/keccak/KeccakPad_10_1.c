@@ -37,6 +37,10 @@ static int pf(pad *p, permutation *f, const size_t remaining_bits)
 		return 1;
 	}
 
+	if (p->rate >= f->width) {
+		return 1;
+	}
+
 	if (remaining_bits >= p->rate) {
 		return 1;
 	}
