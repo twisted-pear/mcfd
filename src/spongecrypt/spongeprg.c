@@ -248,6 +248,7 @@ int spongeprg_fetch(spongeprg *g, unsigned char *out, const size_t out_byte_len)
 	return 0;
 }
 
+/* TODO: this requires block_size >= width - rate */
 int spongeprg_forget(spongeprg *g)
 {
 	assert(g != NULL);
