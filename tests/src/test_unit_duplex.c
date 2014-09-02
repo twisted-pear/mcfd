@@ -111,27 +111,30 @@ static void duplex_init_rate_eq_minrate(void **state __attribute__((unused)))
 
 static void duplex_init_rate_odd(void **state __attribute__((unused)))
 {
-	p->rate = CREATE_RATE + 1;
-
 	/* FIXME: implementations using calloc can cheat */
 	expect_in_range_count(__wrap_alloc, nmemb, 1, CREATE_MAX_ALLOC_SIZE, -1);
 	expect_any_count(__wrap_alloc, size, -1);
 	will_return_count(__wrap_alloc, __WRAP_ALLOC_NEW, -1);
 
-	__activate_wrap_alloc = 1;
+	size_t rate;
+	for (rate = CREATE_RATE + 1; rate < CREATE_RATE + 8; rate++) {
+		p->rate = rate;
 
-	duplex *dp = duplex_init(f, p, CREATE_RATE + 1);
+		__activate_wrap_alloc = 1;
 
-	__activate_wrap_alloc = 0;
+		duplex *dp = duplex_init(f, p, rate);
 
-	assert_non_null(dp);
+		__activate_wrap_alloc = 0;
 
-	assert_true(dp->f == f);
-	assert_true(dp->p == p);
-	assert_true(dp->rate == CREATE_RATE + 1);
-	assert_true(dp->max_duplex_rate <= (CREATE_RATE + 1) - CREATE_MIN_RATE);
+		assert_non_null(dp);
 
-	duplex_free(dp);
+		assert_true(dp->f == f);
+		assert_true(dp->p == p);
+		assert_true(dp->rate == rate);
+		assert_true(dp->max_duplex_rate <= (rate) - CREATE_MIN_RATE);
+
+		duplex_free(dp);
+	}
 }
 
 static void duplex_init_width_odd(void **state __attribute__((unused)))
@@ -217,6 +220,31 @@ static void duplex_init_normal(void **state __attribute__((unused)))
 	duplex_free(dp);
 }
 
+static void duplex_init_rate_max(void **state __attribute__((unused)))
+{
+	p->rate = CREATE_WIDTH - 1;
+
+	/* FIXME: implementations using calloc can cheat */
+	expect_in_range_count(__wrap_alloc, nmemb, 1, CREATE_MAX_ALLOC_SIZE, -1);
+	expect_any_count(__wrap_alloc, size, -1);
+	will_return_count(__wrap_alloc, __WRAP_ALLOC_NEW, -1);
+
+	__activate_wrap_alloc = 1;
+
+	duplex *dp = duplex_init(f, p, CREATE_WIDTH - 1);
+
+	__activate_wrap_alloc = 0;
+
+	assert_non_null(dp);
+
+	assert_true(dp->f == f);
+	assert_true(dp->p == p);
+	assert_true(dp->rate == CREATE_WIDTH - 1);
+	assert_true(dp->max_duplex_rate <= (CREATE_WIDTH - 1) - CREATE_MIN_RATE);
+
+	duplex_free(dp);
+}
+
 int run_unit_tests(void)
 {
 	int res = 0;
@@ -251,6 +279,8 @@ int run_unit_tests(void)
 		unit_test_setup_teardown(duplex_init_alloc_limited, duplex_init_setup,
 				duplex_init_teardown),
 		unit_test_setup_teardown(duplex_init_normal, duplex_init_setup,
+				duplex_init_teardown),
+		unit_test_setup_teardown(duplex_init_rate_max, duplex_init_setup,
 				duplex_init_teardown)
 	};
 
