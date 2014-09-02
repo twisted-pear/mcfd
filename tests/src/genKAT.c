@@ -227,16 +227,16 @@ genExtremelyLongMsg(int hashbitlen)
     
 //  memcpy(Text, "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmno", 64);
     
-    if ( (retval = Init(&state, hashbitlen)) != KAT_SUCCESS ) {
+    if ( (retval = Init(&state, hashbitlen)) != SUCCESS ) {
         printf("Init returned <%d> in genExtremelyLongMsg\n", retval);
         return KAT_HASH_ERROR;
     }
     for ( i=0; i<repeat; i++ )
-        if ( (retval = Update(&state, Text, 512)) != KAT_SUCCESS ) {
+        if ( (retval = Update(&state, Text, 512)) != SUCCESS ) {
             printf("Update returned <%d> in genExtremelyLongMsg\n", retval);
             return KAT_HASH_ERROR;
         }
-    if ( (retval = Final(&state, MD)) != KAT_SUCCESS ) {
+    if ( (retval = Final(&state, MD)) != SUCCESS ) {
         printf("Final returned <%d> in genExtremelyLongMsg\n", retval);
         return KAT_HASH_ERROR;
     }

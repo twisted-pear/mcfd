@@ -169,33 +169,6 @@ static void iota(uint64_t *state, int round)
 	state[IDX(0,0)] ^= round_constants[round];
 }
 
-static void print_state_lanes(uint64_t *state, int round)
-{
-	size_t i;
-
-	printf("Round %d:\n", round);
-	for (i = 0; i < NUM_LANES; i++) {
-		printf("%016zx", state[i]);
-		if (i % RC_WIDTH == 4) {
-			printf("\n");
-		} else {
-			printf(" ");
-		}
-	}
-	printf("\n");
-}
-
-static void print_state(const unsigned char *state, int round)
-{
-	size_t i;
-
-	printf("Round %d:\n", round);
-	for (i = 0; i < PERMUTATION_WIDTH / 8; i++) {
-		printf("%02x ", state[i]);
-	}
-	printf("\n");
-}
-
 static void permute(permutation *p, unsigned char *state)
 {
 	assert(p != NULL);
