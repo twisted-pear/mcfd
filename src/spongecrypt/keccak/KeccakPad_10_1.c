@@ -52,7 +52,9 @@ static int pf(pad *p, permutation *f, const size_t remaining_bits)
 	}
 
 	if (remaining_bits + 1 == p->rate) {
-		f->f(f);
+		if (f->f(f) != 0) {
+			return 1;
+		}
 	}
 
 	unsigned char pad_end_byte = 0x80;
@@ -61,7 +63,9 @@ static int pf(pad *p, permutation *f, const size_t remaining_bits)
 		return 1;
 	}
 
-	f->f(f);
+	if (f->f(f) != 0) {
+		return 1;
+	}
 
 	return 0;
 }

@@ -106,7 +106,9 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 					bits_to_block) != 0) {
 			assert(0);
 		}
-		sp->f->f(sp->f);
+		if (sp->f->f(sp->f) != 0) {
+			assert(0);
+		}
 
 		internal->remaining_bits = 0;
 
@@ -121,7 +123,9 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 		if (sp->f->xor(sp->f, 0, in_cur, sp->rate) != 0) {
 			assert(0);
 		}
-		sp->f->f(sp->f);
+		if (sp->f->f(sp->f) != 0) {
+			assert(0);
+		}
 
 		in_remaining -= sp->rate;
 		in_cur += sp->rate / 8;
@@ -202,7 +206,9 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 					internal->remaining_bits) != 0) {
 			assert(0);
 		}
-		sp->f->f(sp->f);
+		if (sp->f->f(sp->f) != 0) {
+			assert(0);
+		}
 
 		out_remaining -= internal->remaining_bits;
 		out_cur += internal->remaining_bits / 8;
@@ -217,7 +223,9 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 		if (sp->f->get(sp->f, 0, out_cur, sp->rate) != 0) {
 			assert(0);
 		}
-		sp->f->f(sp->f);
+		if (sp->f->f(sp->f) != 0) {
+			assert(0);
+		}
 
 		out_remaining -= sp->rate;
 		out_cur += sp->rate / 8;

@@ -230,9 +230,11 @@ static void keccakPad_10_1_init_rate_1_left(void **state __attribute__((unused))
 	keccakPad_10_1_free(p);
 }
 
-static void keccakPad_10_1_pf_f(permutation *p)
+static int keccakPad_10_1_pf_f(permutation *p)
 {
 	check_expected(p);
+
+	return mock_type(int);
 }
 
 static int keccakPad_10_1_pf_xor(permutation *p, const size_t start_bit_idx,
@@ -349,6 +351,38 @@ static void keccakPad_10_1_pf_xor_fail(void **state __attribute__((unused)))
 	assert_int_equal(p->pf(p, f, 0), 1);
 }
 
+static void keccakPad_10_1_pf_f_fail(void **state __attribute__((unused)))
+{
+	/* first f fails */
+
+	expect_memory(keccakPad_10_1_pf_xor, p, f, sizeof(permutation));
+	expect_value(keccakPad_10_1_pf_xor, start_bit_idx, CREATE_RATE - 8);
+	expect_any(keccakPad_10_1_pf_xor, input);
+	expect_value(keccakPad_10_1_pf_xor, input_bit_len, 8);
+	will_return(keccakPad_10_1_pf_xor, 0);
+
+	expect_memory(keccakPad_10_1_pf_f, p, f, sizeof(permutation));
+	will_return(keccakPad_10_1_pf_f, 1);
+
+	assert_int_equal(p->pf(p, f, CREATE_RATE - 1), 1);
+
+	/* second f fails */
+
+	expect_memory_count(keccakPad_10_1_pf_xor, p, f, sizeof(permutation), 2);
+	expect_value(keccakPad_10_1_pf_xor, start_bit_idx, 0);
+	expect_value(keccakPad_10_1_pf_xor, start_bit_idx, CREATE_RATE - 8);
+	expect_any_count(keccakPad_10_1_pf_xor, input, 2);
+	expect_value(keccakPad_10_1_pf_xor, input_bit_len, 1);
+	expect_value(keccakPad_10_1_pf_xor, input_bit_len, 8);
+	will_return(keccakPad_10_1_pf_xor, 0);
+	will_return(keccakPad_10_1_pf_xor, 0);
+
+	expect_memory(keccakPad_10_1_pf_f, p, f, sizeof(permutation));
+	will_return(keccakPad_10_1_pf_f, 1);
+
+	assert_int_equal(p->pf(p, f, 0), 1);
+}
+
 static void keccakPad_10_1_pf_remaining_zero(void **state __attribute__((unused)))
 {
 	expect_memory_count(keccakPad_10_1_pf_xor, p, f, sizeof(permutation), 2);
@@ -361,6 +395,7 @@ static void keccakPad_10_1_pf_remaining_zero(void **state __attribute__((unused)
 	will_return(keccakPad_10_1_pf_xor, 0);
 
 	expect_memory(keccakPad_10_1_pf_f, p, f, sizeof(permutation));
+	will_return(keccakPad_10_1_pf_f, 0);
 
 	assert_int_equal(p->pf(p, f, 0), 0);
 }
@@ -377,6 +412,7 @@ static void keccakPad_10_1_pf_remaining_even(void **state __attribute__((unused)
 	will_return(keccakPad_10_1_pf_xor, 0);
 
 	expect_memory(keccakPad_10_1_pf_f, p, f, sizeof(permutation));
+	will_return(keccakPad_10_1_pf_f, 0);
 
 	assert_int_equal(p->pf(p, f, CREATE_RATE - 8), 0);
 }
@@ -393,6 +429,7 @@ static void keccakPad_10_1_pf_remaining_odd(void **state __attribute__((unused))
 	will_return(keccakPad_10_1_pf_xor, 0);
 
 	expect_memory(keccakPad_10_1_pf_f, p, f, sizeof(permutation));
+	will_return(keccakPad_10_1_pf_f, 0);
 
 	assert_int_equal(p->pf(p, f, CREATE_RATE - 4), 0);
 }
@@ -409,6 +446,7 @@ static void keccakPad_10_1_pf_remaining_2_left(void **state __attribute__((unuse
 	will_return(keccakPad_10_1_pf_xor, 0);
 
 	expect_memory(keccakPad_10_1_pf_f, p, f, sizeof(permutation));
+	will_return(keccakPad_10_1_pf_f, 0);
 
 	assert_int_equal(p->pf(p, f, CREATE_RATE - 2), 0);
 }
@@ -424,8 +462,8 @@ static void keccakPad_10_1_pf_remaining_1_left(void **state __attribute__((unuse
 	will_return(keccakPad_10_1_pf_xor, 0);
 	will_return(keccakPad_10_1_pf_xor, 0);
 
-	expect_memory(keccakPad_10_1_pf_f, p, f, sizeof(permutation));
-	expect_memory(keccakPad_10_1_pf_f, p, f, sizeof(permutation));
+	expect_memory_count(keccakPad_10_1_pf_f, p, f, sizeof(permutation), 2);
+	will_return_count(keccakPad_10_1_pf_f, 0, 2);
 
 	assert_int_equal(p->pf(p, f, CREATE_RATE - 1), 0);
 }
@@ -467,9 +505,11 @@ static void keccakPad_10_1_pf_diff_rates(void **state __attribute__((unused)))
 			will_return(keccakPad_10_1_pf_xor, 0);
 
 			expect_memory(keccakPad_10_1_pf_f, p, f, sizeof(permutation));
+			will_return(keccakPad_10_1_pf_f, 0);
 			if (remaining == rate - 1) {
 				expect_memory(keccakPad_10_1_pf_f, p, f,
 						sizeof(permutation));
+				will_return(keccakPad_10_1_pf_f, 0);
 			}
 
 			assert_int_equal(p->pf(p, f, remaining), 0);
@@ -528,6 +568,8 @@ int run_unit_tests(void)
 		unit_test_setup_teardown(keccakPad_10_1_pf_width_eq_rate,
 				keccakPad_10_1_pf_setup, keccakPad_10_1_pf_teardown),
 		unit_test_setup_teardown(keccakPad_10_1_pf_xor_fail,
+				keccakPad_10_1_pf_setup, keccakPad_10_1_pf_teardown),
+		unit_test_setup_teardown(keccakPad_10_1_pf_f_fail,
 				keccakPad_10_1_pf_setup, keccakPad_10_1_pf_teardown),
 		unit_test_setup_teardown(keccakPad_10_1_pf_remaining_zero,
 				keccakPad_10_1_pf_setup, keccakPad_10_1_pf_teardown),

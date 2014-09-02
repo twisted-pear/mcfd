@@ -17,7 +17,7 @@
 
 #define IDX(X,Y) ((RC_WIDTH * ((Y) % RC_WIDTH)) + ((X) % RC_WIDTH))
 
-static void f(permutation *p);
+static int f(permutation *p);
 static int xor(permutation *p, const size_t start_bit_idx, const unsigned char *input,
 		const size_t input_bit_len);
 static int get(permutation *p, const size_t start_bit_idx, unsigned char *output,
@@ -213,21 +213,31 @@ static void permute(permutation *p, unsigned char *state)
 	}
 }
 
-static void f(permutation *p)
+static int f(permutation *p)
 {
-	assert(p != NULL);
+	if (p == NULL) {
+		return 1;
+	}
+
 	assert(p->internal != NULL);
 
 	permute(p, p->internal);
+
+	return 0;
 }
 
 static int xor(permutation *p, const size_t start_bit_idx, const unsigned char *input,
 		const size_t input_bit_len)
 {
-	assert(p != NULL);
+	if (p == NULL) {
+		return 1;
+	}
+
 	assert(p->internal != NULL);
 
-	assert((input != NULL) | (input_bit_len == 0));
+	if (input == NULL && input_bit_len != 0) {
+		return 1;
+	}
 
 	if (start_bit_idx % 8 != 0) {
 		return 1;
@@ -268,10 +278,16 @@ static int xor(permutation *p, const size_t start_bit_idx, const unsigned char *
 static int get(permutation *p, const size_t start_bit_idx, unsigned char *output,
 		const size_t output_bit_len)
 {
-	assert(p != NULL);
+	if (p == NULL) {
+		return 1;
+	}
+
 	assert(p->internal != NULL);
 
-	assert((output != NULL) | (output_bit_len == 0));
+	if (output == NULL && output_bit_len != 0) {
+		return 1;
+	}
+
 
 	if (start_bit_idx % 8 != 0) {
 		return 1;

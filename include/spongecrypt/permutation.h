@@ -5,7 +5,7 @@
 
 typedef struct permutation_t {
 	size_t width;
-	void (*f)(struct permutation_t *);
+	int (*f)(struct permutation_t *);
 	int (*xor)(struct permutation_t *, const size_t, const unsigned char *,
 			const size_t);
 	int (*get)(struct permutation_t *, const size_t, unsigned char *, const size_t);
