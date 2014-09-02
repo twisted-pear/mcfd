@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include <keccak/KeccakF-1600.h>
 #include <keccak/KeccakPad_10_1.h>
@@ -20,6 +21,8 @@
 
 #define EXPECTED_WIDTH 1600
 #define EXPECTED_MIN_PAD_SIZE 2
+
+#define TESTBUF_PATTERN 0xAA
 
 static void keccakF_1600_init_noalloc(void **state __attribute__((unused)))
 {
@@ -95,6 +98,253 @@ static void keccakF_1600_init_normal(void **state __attribute__((unused)))
 	assert_non_null(f->get);
 
 	keccakF_1600_free(f);
+}
+
+static permutation *f = NULL;
+static unsigned char *testbuf = NULL;
+
+static void keccakF_1600_xor_setup(void **state __attribute__((unused)))
+{
+	f = keccakF_1600_init();
+	assert_non_null(f);
+
+	assert_true(f->width == EXPECTED_WIDTH);
+	assert_non_null(f->f);
+	assert_non_null(f->xor);
+	assert_non_null(f->get);
+
+	testbuf = calloc(EXPECTED_WIDTH / 8, 1);
+	assert_non_null(testbuf);
+
+	memset(testbuf, TESTBUF_PATTERN, EXPECTED_WIDTH / 8);
+
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
+	}
+}
+
+static void keccakF_1600_xor_teardown(void **state __attribute__((unused)))
+{
+	keccakF_1600_free(f);
+	free(testbuf);
+}
+
+static void keccakF_1600_xor_f_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(f->xor(NULL, 0, testbuf, EXPECTED_WIDTH), 1);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+}
+
+static void keccakF_1600_xor_start_odd(void **state __attribute__((unused)))
+{
+	size_t start_idx;
+	for (start_idx = 1; start_idx < 8; start_idx++) {
+		assert_int_equal(f->xor(f, start_idx, testbuf,
+					EXPECTED_WIDTH - start_idx), 1);
+
+		assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+		size_t i;
+		for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+			assert_int_equal(testbuf[i], 0);
+		}
+
+		memset(testbuf, TESTBUF_PATTERN, EXPECTED_WIDTH / 8);
+	}
+}
+
+static void keccakF_1600_xor_start_gt_width(void **state __attribute__((unused)))
+{
+	assert_int_equal(f->xor(f, EXPECTED_WIDTH + 8, NULL, 0), 1);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+}
+
+static void keccakF_1600_xor_start_eq_width(void **state __attribute__((unused)))
+{
+	assert_int_equal(f->xor(f, EXPECTED_WIDTH, NULL, 0), 1);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+}
+
+static void keccakF_1600_xor_in_null_len_nonzero(void **state __attribute__((unused)))
+{
+	assert_int_equal(f->xor(f, 0, NULL, CREATE_RATE), 1);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+}
+
+static void keccakF_1600_xor_in_null_len_zero(void **state __attribute__((unused)))
+{
+	assert_int_equal(f->xor(f, 0, NULL, 0), 0);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+}
+
+static void keccakF_1600_xor_in_nonnull_len_zero(void **state __attribute__((unused)))
+{
+	assert_int_equal(f->xor(f, 0, testbuf, 0), 0);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+}
+
+static void keccakF_1600_xor_start_len_gt_width(void **state __attribute__((unused)))
+{
+	assert_int_equal(f->xor(f, EXPECTED_WIDTH - CREATE_RATE + 8, testbuf,
+				CREATE_RATE), 1);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+}
+
+static void keccakF_1600_xor_start_len_eq_width(void **state __attribute__((unused)))
+{
+	assert_int_equal(f->xor(f, EXPECTED_WIDTH - CREATE_RATE, testbuf,
+				CREATE_RATE), 0);
+
+	memset(testbuf, 0, EXPECTED_WIDTH / 8);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < (EXPECTED_WIDTH - CREATE_RATE) / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+	for (i = (EXPECTED_WIDTH - CREATE_RATE) / 8; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
+	}
+}
+
+static void keccakF_1600_xor_diff_lens(void **state __attribute__((unused)))
+{
+	size_t len;
+	for (len = 0; len <= EXPECTED_WIDTH; len++) {
+		permutation *f = keccakF_1600_init();
+		assert_non_null(f);
+		assert_true(f->width == EXPECTED_WIDTH);
+		assert_non_null(f->f);
+		assert_non_null(f->xor);
+		assert_non_null(f->get);
+
+		assert_int_equal(f->xor(f, 0, testbuf, len), 0);
+
+		memset(testbuf, 0, EXPECTED_WIDTH / 8);
+
+		assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+		size_t i;
+		for (i = 0; i < len / 8; i++) {
+			assert_int_equal(testbuf[i], TESTBUF_PATTERN);
+		}
+		if (len % 8 != 0) {
+			assert_int_equal(testbuf[i], TESTBUF_PATTERN >> (8 - (len % 8)));
+			i++;
+		}
+		for (; i < EXPECTED_WIDTH / 8; i++) {
+			assert_int_equal(testbuf[i], 0);
+		}
+
+		memset(testbuf, TESTBUF_PATTERN, EXPECTED_WIDTH / 8);
+		keccakF_1600_free(f);
+	}
+}
+
+static void keccakF_1600_get_setup(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_teardown(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_f_null(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_start_odd(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_start_gt_width(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_start_eq_width(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_out_null_len_nonzero(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_out_null_len_zero(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_out_nonnull_len_zero(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_start_len_gt_width(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_start_len_eq_width(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_get_diff_lens(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_f_setup(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_f_teardown(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_f_f_null(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_f_all_zero(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_f_all_one(void **state __attribute__((unused)))
+{
+}
+
+static void keccakF_1600_f_pattern(void **state __attribute__((unused)))
+{
 }
 
 static void keccakPad_10_1_init_rate_zero(void **state __attribute__((unused)))
@@ -258,7 +508,6 @@ static int keccakPad_10_1_pf_get(permutation *p __attribute__((unused)),
 	return -1;
 }
 
-static permutation *f = NULL;
 static pad *p = NULL;
 
 static void keccakPad_10_1_pf_setup(void **state __attribute__((unused)))
@@ -535,7 +784,74 @@ int run_unit_tests(void)
 	res |= run_tests(keccakF_1600_init_tests);
 	fprintf(stderr, "\n");
 
-	/* TODO: test remaining KeccakF functionality */
+	const UnitTest keccakF_1600_xor_tests[] = {
+		unit_test_setup_teardown(keccakF_1600_xor_f_null, keccakF_1600_xor_setup,
+				keccakF_1600_xor_teardown),
+		unit_test_setup_teardown(keccakF_1600_xor_start_odd,
+				keccakF_1600_xor_setup, keccakF_1600_xor_teardown),
+		unit_test_setup_teardown(keccakF_1600_xor_start_gt_width,
+				keccakF_1600_xor_setup, keccakF_1600_xor_teardown),
+		unit_test_setup_teardown(keccakF_1600_xor_start_eq_width,
+				keccakF_1600_xor_setup, keccakF_1600_xor_teardown),
+		unit_test_setup_teardown(keccakF_1600_xor_in_null_len_nonzero,
+				keccakF_1600_xor_setup, keccakF_1600_xor_teardown),
+		unit_test_setup_teardown(keccakF_1600_xor_in_null_len_zero,
+				keccakF_1600_xor_setup, keccakF_1600_xor_teardown),
+		unit_test_setup_teardown(keccakF_1600_xor_in_nonnull_len_zero,
+				keccakF_1600_xor_setup, keccakF_1600_xor_teardown),
+		unit_test_setup_teardown(keccakF_1600_xor_start_len_gt_width,
+				keccakF_1600_xor_setup, keccakF_1600_xor_teardown),
+		unit_test_setup_teardown(keccakF_1600_xor_start_len_eq_width,
+				keccakF_1600_xor_setup, keccakF_1600_xor_teardown),
+		unit_test_setup_teardown(keccakF_1600_xor_diff_lens,
+				keccakF_1600_xor_setup, keccakF_1600_xor_teardown)
+	};
+
+	fprintf(stderr, "keccakF_1600_xor:\n");
+	res |= run_tests(keccakF_1600_xor_tests);
+	fprintf(stderr, "\n");
+
+	const UnitTest keccakF_1600_get_tests[] = {
+		unit_test_setup_teardown(keccakF_1600_get_f_null, keccakF_1600_get_setup,
+				keccakF_1600_get_teardown),
+		unit_test_setup_teardown(keccakF_1600_get_start_odd,
+				keccakF_1600_get_setup, keccakF_1600_get_teardown),
+		unit_test_setup_teardown(keccakF_1600_get_start_gt_width,
+				keccakF_1600_get_setup, keccakF_1600_get_teardown),
+		unit_test_setup_teardown(keccakF_1600_get_start_eq_width,
+				keccakF_1600_get_setup, keccakF_1600_get_teardown),
+		unit_test_setup_teardown(keccakF_1600_get_out_null_len_nonzero,
+				keccakF_1600_get_setup, keccakF_1600_get_teardown),
+		unit_test_setup_teardown(keccakF_1600_get_out_null_len_zero,
+				keccakF_1600_get_setup, keccakF_1600_get_teardown),
+		unit_test_setup_teardown(keccakF_1600_get_out_nonnull_len_zero,
+				keccakF_1600_get_setup, keccakF_1600_get_teardown),
+		unit_test_setup_teardown(keccakF_1600_get_start_len_gt_width,
+				keccakF_1600_get_setup, keccakF_1600_get_teardown),
+		unit_test_setup_teardown(keccakF_1600_get_start_len_eq_width,
+				keccakF_1600_get_setup, keccakF_1600_get_teardown),
+		unit_test_setup_teardown(keccakF_1600_get_diff_lens,
+				keccakF_1600_get_setup, keccakF_1600_get_teardown)
+	};
+
+	fprintf(stderr, "keccakF_1600_get:\n");
+	res |= run_tests(keccakF_1600_get_tests);
+	fprintf(stderr, "\n");
+
+	const UnitTest keccakF_1600_f_tests[] = {
+		unit_test_setup_teardown(keccakF_1600_f_f_null, keccakF_1600_f_setup,
+				keccakF_1600_f_teardown),
+		unit_test_setup_teardown(keccakF_1600_f_all_zero, keccakF_1600_f_setup,
+				keccakF_1600_f_teardown),
+		unit_test_setup_teardown(keccakF_1600_f_all_one, keccakF_1600_f_setup,
+				keccakF_1600_f_teardown),
+		unit_test_setup_teardown(keccakF_1600_f_pattern, keccakF_1600_f_setup,
+				keccakF_1600_f_teardown)
+	};
+
+	fprintf(stderr, "keccakF_1600_f:\n");
+	res |= run_tests(keccakF_1600_f_tests);
+	fprintf(stderr, "\n");
 
 	const UnitTest keccakPad_10_1_init_tests[] = {
 		unit_test(keccakPad_10_1_init_rate_zero),
