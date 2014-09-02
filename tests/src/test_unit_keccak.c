@@ -23,6 +23,7 @@
 #define EXPECTED_MIN_PAD_SIZE 2
 
 #define TESTBUF_PATTERN 0xAA
+#define GET_TEST_PATTERN 0x55
 
 static void keccakF_1600_init_noalloc(void **state __attribute__((unused)))
 {
@@ -277,50 +278,191 @@ static void keccakF_1600_xor_diff_lens(void **state __attribute__((unused)))
 
 static void keccakF_1600_get_setup(void **state __attribute__((unused)))
 {
+	f = keccakF_1600_init();
+	assert_non_null(f);
+
+	assert_true(f->width == EXPECTED_WIDTH);
+	assert_non_null(f->f);
+	assert_non_null(f->xor);
+	assert_non_null(f->get);
+
+	testbuf = calloc(EXPECTED_WIDTH / 8, 1);
+	assert_non_null(testbuf);
+
+	memset(testbuf, GET_TEST_PATTERN, EXPECTED_WIDTH / 8);
+
+	assert_int_equal(f->xor(f, 0, testbuf, EXPECTED_WIDTH), 0);
+
+	memset(testbuf, 0, EXPECTED_WIDTH / 8);
 }
 
 static void keccakF_1600_get_teardown(void **state __attribute__((unused)))
 {
+	keccakF_1600_free(f);
+	free(testbuf);
 }
 
 static void keccakF_1600_get_f_null(void **state __attribute__((unused)))
 {
+	assert_int_equal(f->get(NULL, 0, testbuf, EXPECTED_WIDTH), 1);
+
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+	}
 }
 
 static void keccakF_1600_get_start_odd(void **state __attribute__((unused)))
 {
+	size_t start_idx;
+	for (start_idx = 1; start_idx < 8; start_idx++) {
+		assert_int_equal(f->get(f, start_idx, testbuf,
+					EXPECTED_WIDTH - start_idx), 1);
+
+		size_t i;
+		for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+			assert_int_equal(testbuf[i], 0);
+		}
+
+		assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+		for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+			assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+		}
+
+		memset(testbuf, 0, EXPECTED_WIDTH / 8);
+	}
 }
 
 static void keccakF_1600_get_start_gt_width(void **state __attribute__((unused)))
 {
+	assert_int_equal(f->get(f, EXPECTED_WIDTH + 8, NULL, 0), 1);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+	}
 }
 
 static void keccakF_1600_get_start_eq_width(void **state __attribute__((unused)))
 {
+	assert_int_equal(f->get(f, EXPECTED_WIDTH, NULL, 0), 1);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+	}
 }
 
 static void keccakF_1600_get_out_null_len_nonzero(void **state __attribute__((unused)))
 {
+	assert_int_equal(f->get(f, 0, NULL, CREATE_RATE), 1);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+	}
 }
 
 static void keccakF_1600_get_out_null_len_zero(void **state __attribute__((unused)))
 {
+	assert_int_equal(f->get(f, 0, NULL, 0), 0);
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+	}
 }
 
 static void keccakF_1600_get_out_nonnull_len_zero(void **state __attribute__((unused)))
 {
+	assert_int_equal(f->get(f, 0, testbuf, 0), 0);
+
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+	}
 }
 
 static void keccakF_1600_get_start_len_gt_width(void **state __attribute__((unused)))
 {
+	assert_int_equal(f->get(f, EXPECTED_WIDTH - CREATE_RATE + 8, testbuf,
+				CREATE_RATE), 1);
+
+	size_t i;
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
+
+	assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+	for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+	}
 }
 
 static void keccakF_1600_get_start_len_eq_width(void **state __attribute__((unused)))
 {
+	assert_int_equal(f->get(f, EXPECTED_WIDTH - CREATE_RATE, testbuf,
+				CREATE_RATE), 0);
+
+	size_t i;
+	for (i = 0; i < CREATE_RATE / 8; i++) {
+		assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+	}
+	for (; i < EXPECTED_WIDTH / 8; i++) {
+		assert_int_equal(testbuf[i], 0);
+	}
 }
 
 static void keccakF_1600_get_diff_lens(void **state __attribute__((unused)))
 {
+	size_t len;
+	for (len = 0; len <= EXPECTED_WIDTH; len++) {
+		permutation *f = keccakF_1600_init();
+		assert_non_null(f);
+		assert_true(f->width == EXPECTED_WIDTH);
+		assert_non_null(f->f);
+		assert_non_null(f->xor);
+		assert_non_null(f->get);
+		memset(testbuf, GET_TEST_PATTERN, EXPECTED_WIDTH / 8);
+		assert_int_equal(f->xor(f, 0, testbuf, EXPECTED_WIDTH), 0);
+		memset(testbuf, 0, EXPECTED_WIDTH / 8);
+
+		assert_int_equal(f->get(f, 0, testbuf, len), 0);
+
+		size_t i;
+		for (i = 0; i < len / 8; i++) {
+			assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+		}
+		if (len % 8 != 0) {
+			assert_int_equal(testbuf[i],
+					(GET_TEST_PATTERN << (8 - (len % 8))) & 0xFF);
+			i++;
+		}
+		for (; i < EXPECTED_WIDTH / 8; i++) {
+			assert_int_equal(testbuf[i], 0);
+		}
+
+		assert_int_equal(f->get(f, 0, testbuf, EXPECTED_WIDTH), 0);
+		for (i = 0; i < EXPECTED_WIDTH / 8; i++) {
+			assert_int_equal(testbuf[i], GET_TEST_PATTERN);
+		}
+
+		keccakF_1600_free(f);
+	}
 }
 
 static void keccakF_1600_f_setup(void **state __attribute__((unused)))
