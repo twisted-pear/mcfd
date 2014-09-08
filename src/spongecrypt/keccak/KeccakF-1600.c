@@ -208,7 +208,7 @@ static int xor(permutation *p, const size_t start_bit_idx, const unsigned char *
 
 	assert(p->internal != NULL);
 
-	if (input == NULL && input_bit_len != 0) {
+	if ((input == NULL) & (input_bit_len != 0)) {
 		return 1;
 	}
 
@@ -257,7 +257,7 @@ static int get(permutation *p, const size_t start_bit_idx, unsigned char *output
 
 	assert(p->internal != NULL);
 
-	if (output == NULL && output_bit_len != 0) {
+	if ((output == NULL) & (output_bit_len != 0)) {
 		return 1;
 	}
 
