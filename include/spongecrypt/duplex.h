@@ -19,8 +19,6 @@ typedef struct duplex_t {
 duplex *duplex_init(permutation *f, pad *p, const size_t rate);
 void duplex_free(duplex *dp);
 
-void duplex_clear_buffers(duplex *dp);
-
 constr_result duplex_duplexing(duplex *dp, const unsigned char *input,
 		const size_t input_bit_len, unsigned char *output,
 		const size_t output_bit_len);

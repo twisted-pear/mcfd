@@ -64,7 +64,6 @@ static void spongewrap_clear_buffers(spongewrap *w)
 
 	struct internals *internal = (struct internals *) w->internal;
 
-	duplex_clear_buffers(internal->dp);
 	explicit_bzero(internal->buf, w->block_size + 1);
 }
 

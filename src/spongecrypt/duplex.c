@@ -11,11 +11,6 @@ typedef enum {
 	DUPLEX_BROKEN
 } duplex_state;
 
-void duplex_clear_buffers(duplex *dp)
-{
-	assert(dp != NULL);
-}
-
 duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 {
 	if (f == NULL || p == NULL) {
@@ -60,8 +55,6 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 void duplex_free(duplex *dp)
 {
 	assert(dp != NULL);
-
-	duplex_clear_buffers(dp);
 
 	/* we don't want broken programs to use the freed duplex */
 	dp->internal = (void *) DUPLEX_BROKEN;

@@ -21,7 +21,6 @@ static void spongeprg_clear_buffers(spongeprg *g)
 
 	struct internals *internal = (struct internals *) g->internal;
 
-	duplex_clear_buffers(internal->dp);
 	explicit_bzero(internal->buf, g->block_size);
 
 	internal->bin_byte_len = 0;
@@ -146,9 +145,6 @@ int spongeprg_feed(spongeprg *g, const unsigned char *in, const size_t in_byte_l
 		in_cur += block_size;
 	}
 
-	/* Clear the duplex' buffers just in case. */
-	duplex_clear_buffers(internal->dp);
-
 	/* Clear bout. */
 	if (internal->bout_byte_len != 0) {
 		assert(internal->bin_byte_len == 0);
@@ -219,9 +215,6 @@ int spongeprg_fetch(spongeprg *g, unsigned char *out, const size_t out_byte_len)
 		internal->bout_byte_len = block_size;
 
 		internal->bin_byte_len = 0;
-
-		/* Clear the duplex' buffers just in case. */
-		duplex_clear_buffers(internal->dp);
 	}
 
 	assert(out_remaining <= internal->bout_byte_len);
