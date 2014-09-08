@@ -135,17 +135,17 @@ int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 		goto sponge_fail;
 	}
 
-	if (sponge_absorb(sp, (unsigned char *) pass, pass_len * 8) != 0) {
+	if (sponge_absorb(sp, (unsigned char *) pass, pass_len * 8) != CONSTR_SUCCESS) {
 		goto absorb_fail;
 	}
 
 	if (salt != NULL) {
-		if (sponge_absorb(sp, salt, MCFD_SALT_BITS) != 0) {
+		if (sponge_absorb(sp, salt, MCFD_SALT_BITS) != CONSTR_SUCCESS) {
 			goto absorb_fail;
 		}
 	}
 
-	if (sponge_absorb_final(sp) != 0) {
+	if (sponge_absorb_final(sp) != CONSTR_SUCCESS) {
 		goto absorb_fail;
 	}
 
@@ -155,12 +155,12 @@ int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 
 	size_t i;
 	for (i = 0; i < iter - 1; i++) {
-		if (sponge_squeeze(sp, kdf_buf, KDF_RATE) != 0) {
+		if (sponge_squeeze(sp, kdf_buf, KDF_RATE) != CONSTR_SUCCESS) {
 			goto squeeze_fail;
 		}
 	}
 
-	if (sponge_squeeze(sp, key, MCFD_KEY_BITS) != 0) {
+	if (sponge_squeeze(sp, key, MCFD_KEY_BITS) != CONSTR_SUCCESS) {
 		goto squeeze_fail;
 	}
 

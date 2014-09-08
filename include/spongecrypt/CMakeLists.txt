@@ -1,3 +1,6 @@
+set (H_CONSTR_COMMON
+	"${CMAKE_CURRENT_SOURCE_DIR}/construction.h")
+
 set (H_CRYPTO_COMMON
 	"${CMAKE_CURRENT_SOURCE_DIR}/permutation.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/pad.h"
@@ -9,10 +12,12 @@ add_subdirectory (keccak)
 
 set_property (GLOBAL APPEND PROPERTY H_SPONGE
 	"${H_CRYPTO_COMMON}"
+	"${H_CONSTR_COMMON}"
 	"${CMAKE_CURRENT_SOURCE_DIR}/sponge.h")
 
 set (H_DUPLEX
 	"${H_CRYPTO_COMMON}"
+	"${H_CONSTR_COMMON}"
 	"${CMAKE_CURRENT_SOURCE_DIR}/duplex.h")
 set_property (GLOBAL APPEND PROPERTY H_DUPLEX
 	${H_DUPLEX})

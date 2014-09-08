@@ -3,8 +3,10 @@
 
 #include <stdint.h>
 
-#include "pad.h"
-#include "permutation.h"
+#include <construction.h>
+
+#include <pad.h>
+#include <permutation.h>
 
 typedef struct sponge_t {
 	permutation *f;
@@ -16,8 +18,10 @@ typedef struct sponge_t {
 sponge *sponge_init(permutation *f, pad *p, const size_t rate);
 void sponge_free(sponge *sp);
 
-int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit_len);
-int sponge_absorb_final(sponge *sp);
-int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_len);
+constr_result sponge_absorb(sponge *sp, const unsigned char *input,
+		const size_t input_bit_len);
+constr_result sponge_absorb_final(sponge *sp);
+constr_result sponge_squeeze(sponge *sp, unsigned char *output,
+		const size_t output_bit_len);
 
 #endif /* __SPONGE_H__ */

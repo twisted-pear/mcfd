@@ -73,17 +73,17 @@ fail_pad:
 
 HashReturn Update(hashState *state, const BitSequence *data, DataLength databitlen)
 {
-    return sponge_absorb(state->sp, data, databitlen);
+    return (sponge_absorb(state->sp, data, databitlen) != CONSTR_SUCCESS);
 }
 
 HashReturn Final(hashState *state, BitSequence *hashval)
 {
-    HashReturn ret = sponge_absorb_final(state->sp);
+    HashReturn ret = (sponge_absorb_final(state->sp) != CONSTR_SUCCESS);
     if (ret != SUCCESS) {
         goto end;
     }
 
-    ret = sponge_squeeze(state->sp, hashval, state->outputLength);
+    ret = (sponge_squeeze(state->sp, hashval, state->outputLength) != CONSTR_SUCCESS);
 
 end:
     keccakF_1600_free(state->sp->f);

@@ -122,7 +122,7 @@ int spongeprg_feed(spongeprg *g, const unsigned char *in, const size_t in_byte_l
 	if (in_remaining >= bytes_to_block && internal->bin_byte_len != 0) {
 		memcpy(internal->buf + internal->bin_byte_len, in_cur, bytes_to_block);
 		if (duplex_duplexing(internal->dp, internal->buf, block_size * 8,
-					NULL, 0) != 0) {
+					NULL, 0) != CONSTR_SUCCESS) {
 			assert(0);
 		}
 
@@ -138,7 +138,7 @@ int spongeprg_feed(spongeprg *g, const unsigned char *in, const size_t in_byte_l
 		assert(internal->bin_byte_len == 0);
 
 		if (duplex_duplexing(internal->dp, in_cur, block_size * 8, NULL,
-					0) != 0) {
+					0) != CONSTR_SUCCESS) {
 			assert(0);
 		}
 
@@ -198,7 +198,7 @@ int spongeprg_fetch(spongeprg *g, unsigned char *out, const size_t out_byte_len)
 
 			if (duplex_duplexing(internal->dp, internal->buf,
 						internal->bin_byte_len * 8, out_cur,
-						block_size * 8) != 0) {
+						block_size * 8) != CONSTR_SUCCESS) {
 				assert(0);
 			}
 
@@ -213,7 +213,7 @@ int spongeprg_fetch(spongeprg *g, unsigned char *out, const size_t out_byte_len)
 		/* Get remaining output. */
 		if (duplex_duplexing(internal->dp, internal->buf,
 					internal->bin_byte_len * 8, internal->buf,
-					block_size * 8) != 0) {
+					block_size * 8) != CONSTR_SUCCESS) {
 			assert(0);
 		}
 		internal->bout_byte_len = block_size;
@@ -263,12 +263,12 @@ int spongeprg_forget(spongeprg *g)
 	assert((internal->bin_byte_len == 0) | (internal->bout_byte_len == 0));
 
 	if (duplex_duplexing(internal->dp, internal->buf, internal->bin_byte_len * 8,
-				internal->buf, block_size * 8) != 0) {
+				internal->buf, block_size * 8) != CONSTR_SUCCESS) {
 		assert(0);
 	}
 
 	if (duplex_duplexing(internal->dp, internal->buf, block_size * 8, internal->buf,
-				block_size * 8) != 0) {
+				block_size * 8) != CONSTR_SUCCESS) {
 		assert(0);
 	}
 

@@ -31,7 +31,7 @@ static void duplex_with_frame_bit(spongewrap *w, const unsigned char *in,
 	internal->buf[in_byte_len] = frame_bit ? 0x80 : 0x00;
 
 	if (duplex_duplexing(internal->dp, internal->buf, (in_byte_len * 8) + 1, out,
-				out_byte_len * 8) != 0) {
+				out_byte_len * 8) != CONSTR_SUCCESS) {
 		assert(0);
 	}
 }

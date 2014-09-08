@@ -8,7 +8,7 @@
 
 struct internals {
 	size_t remaining_bits;
-	enum { PHASE_ABSORB = 0, PHASE_SQUEEZE } phase;
+	enum { PHASE_ABSORB = 0, PHASE_SQUEEZE, PHASE_BROKEN } phase;
 };
 
 sponge *sponge_init(permutation *f, pad *p, const size_t rate)
@@ -69,29 +69,44 @@ void sponge_free(sponge *sp)
 
 	internal->remaining_bits = 0;
 
+	/* we don't want broken programs to use the freed sponge */
+	internal->phase = PHASE_BROKEN;
+
 	free(internal);
 
 	free(sp);
 }
 
-int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit_len)
+constr_result sponge_absorb(sponge *sp, const unsigned char *input,
+		const size_t input_bit_len)
 {
-	assert((sp != NULL) & (input != NULL));
+	if (sp == NULL) {
+		return CONSTR_FAILURE;
+	}
 
 	struct internals *internal = (struct internals *) sp->internal;
+	assert(internal != NULL);
+
+	if (internal->phase == PHASE_BROKEN) {
+		return CONSTR_FATAL;
+	}
 
 	assert(internal->remaining_bits < sp->rate);
 
+	if (input == NULL) {
+		return CONSTR_FAILURE;
+	}
+
 	/* Only absorb in absorb phase. */
 	if (internal->phase != PHASE_ABSORB) {
-		return 1;
+		return CONSTR_FAILURE;
 	}
 
 	/* Don't allow absorbs with partial bytes, except at the end.
 	 * Rationale: The reference implementation doesn't allow this either (and it's
 	 * easier). */
 	if (internal->remaining_bits % 8 != 0) {
-		return 1;
+		return CONSTR_FAILURE;
 	}
 
 	size_t in_remaining = input_bit_len;
@@ -104,10 +119,12 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 
 		if (sp->f->xor(sp->f, internal->remaining_bits, in_cur,
 					bits_to_block) != 0) {
-			assert(0);
+			internal->phase = PHASE_BROKEN;
+			return CONSTR_FATAL;
 		}
 		if (sp->f->f(sp->f) != 0) {
-			assert(0);
+			internal->phase = PHASE_BROKEN;
+			return CONSTR_FATAL;
 		}
 
 		internal->remaining_bits = 0;
@@ -121,10 +138,12 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 		assert(internal->remaining_bits == 0);
 
 		if (sp->f->xor(sp->f, 0, in_cur, sp->rate) != 0) {
-			assert(0);
+			internal->phase = PHASE_BROKEN;
+			return CONSTR_FATAL;
 		}
 		if (sp->f->f(sp->f) != 0) {
-			assert(0);
+			internal->phase = PHASE_BROKEN;
+			return CONSTR_FATAL;
 		}
 
 		in_remaining -= sp->rate;
@@ -133,7 +152,8 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 
 	/* Xor in the remainder but don't permute yet. */
 	if (sp->f->xor(sp->f, internal->remaining_bits, in_cur, in_remaining) != 0) {
-		assert(0);
+		internal->phase = PHASE_BROKEN;
+		return CONSTR_FATAL;
 	}
 
 	internal->remaining_bits += in_remaining;
@@ -141,25 +161,33 @@ int sponge_absorb(sponge *sp, const unsigned char *input, const size_t input_bit
 	assert(internal->remaining_bits < sp->rate);
 	assert(internal->phase == PHASE_ABSORB);
 
-	return 0;
+	return CONSTR_SUCCESS;
 }
 
-int sponge_absorb_final(sponge *sp)
+constr_result sponge_absorb_final(sponge *sp)
 {
-	assert(sp != NULL);
+	if (sp == NULL) {
+		return CONSTR_FAILURE;
+	}
 
 	struct internals *internal = (struct internals *) sp->internal;
+	assert(internal != NULL);
+
+	if (internal->phase == PHASE_BROKEN) {
+		return CONSTR_FATAL;
+	}
 
 	assert(internal->remaining_bits < sp->rate);
 
 	/* Only absorb in absorb phase. */
 	if (internal->phase != PHASE_ABSORB) {
-		return 1;
+		return CONSTR_FAILURE;
 	}
 
 	/* Apply padding and permute last block(s). */
 	if (sp->p->pf(sp->p, sp->f, internal->remaining_bits) != 0) {
-		assert(0);
+		internal->phase = PHASE_BROKEN;
+		return CONSTR_FATAL;
 	}
 
 	internal->remaining_bits = sp->rate;
@@ -171,18 +199,30 @@ int sponge_absorb_final(sponge *sp)
 	assert(internal->remaining_bits % 8 == 0);
 	assert(internal->remaining_bits != 0);
 
-	return 0;
+	return CONSTR_SUCCESS;
 }
 
-int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_len)
+constr_result sponge_squeeze(sponge *sp, unsigned char *output,
+		const size_t output_bit_len)
 {
-	assert((sp != NULL) & (output != NULL));
+	if (sp == NULL) {
+		return CONSTR_FAILURE;
+	}
 
 	struct internals *internal = (struct internals *) sp->internal;
+	assert(internal != NULL);
+
+	if (internal->phase == PHASE_BROKEN) {
+		return CONSTR_FATAL;
+	}
+
+	if (output == NULL) {
+		return CONSTR_FAILURE;
+	}
 
 	/* Only squeeze in squeeze phase. */
 	if (internal->phase != PHASE_SQUEEZE) {
-		return 1;
+		return CONSTR_FAILURE;
 	}
 
 	assert(internal->remaining_bits <= sp->rate);
@@ -193,7 +233,7 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 	 * Rationale: The reference implementation doesn't allow this either (and it's
 	 * easier). */
 	if (output_bit_len % 8 != 0) {
-		return 1;
+		return CONSTR_FAILURE;
 	}
 
 	size_t out_remaining = output_bit_len;
@@ -204,10 +244,11 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 		size_t remaining_start = sp->rate - internal->remaining_bits;
 		if(sp->f->get(sp->f, remaining_start, out_cur,
 					internal->remaining_bits) != 0) {
-			assert(0);
+			return CONSTR_FAILURE;
 		}
 		if (sp->f->f(sp->f) != 0) {
-			assert(0);
+			internal->phase = PHASE_BROKEN;
+			return CONSTR_FATAL;
 		}
 
 		out_remaining -= internal->remaining_bits;
@@ -221,10 +262,12 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 		assert(internal->remaining_bits == sp->rate);
 
 		if (sp->f->get(sp->f, 0, out_cur, sp->rate) != 0) {
-			assert(0);
+			internal->phase = PHASE_BROKEN;
+			return CONSTR_FATAL;
 		}
 		if (sp->f->f(sp->f) != 0) {
-			assert(0);
+			internal->phase = PHASE_BROKEN;
+			return CONSTR_FATAL;
 		}
 
 		out_remaining -= sp->rate;
@@ -236,7 +279,8 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 
 	size_t remaining_start = sp->rate - internal->remaining_bits;
 	if (sp->f->get(sp->f, remaining_start, out_cur, out_remaining) != 0) {
-		assert(0);
+		internal->phase = PHASE_BROKEN;
+		return CONSTR_FATAL;
 	}
 
 	internal->remaining_bits -= out_remaining;
@@ -246,5 +290,5 @@ int sponge_squeeze(sponge *sp, unsigned char *output, const size_t output_bit_le
 	assert(internal->remaining_bits != 0);
 	assert(internal->phase == PHASE_SQUEEZE);
 
-	return 0;
+	return CONSTR_SUCCESS;
 }
