@@ -732,9 +732,14 @@ static void keccakPad_10_1_init_rate_1_left(void **state __attribute__((unused))
 	keccakPad_10_1_free(p);
 }
 
+static int keccakPad_10_1_pf_order = 0;
+
 static int keccakPad_10_1_pf_f(permutation *p)
 {
 	check_expected(p);
+
+	assert_int_equal(keccakPad_10_1_pf_order, 1);
+	keccakPad_10_1_pf_order = 0;
 
 	return mock_type(int);
 }
@@ -746,6 +751,8 @@ static int keccakPad_10_1_pf_xor(permutation *p, const size_t start_bit_idx,
 	check_expected(start_bit_idx);
 	check_expected(input);
 	check_expected(input_bit_len);
+
+	keccakPad_10_1_pf_order = 1;
 
 	return mock_type(int);
 }
@@ -764,6 +771,8 @@ static pad *p = NULL;
 
 static void keccakPad_10_1_pf_setup(void **state __attribute__((unused)))
 {
+	keccakPad_10_1_pf_order = 0;
+
 	f = calloc(1, sizeof(permutation));
 	assert_non_null(f);
 
