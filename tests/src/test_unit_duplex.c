@@ -250,6 +250,9 @@ static void duplex_init_rate_max(void **state __attribute__((unused)))
 }
 
 static int duplex_duplexing_order = 0;
+static unsigned char *inbuf = NULL;
+static unsigned char *outbuf = NULL;
+static duplex *dp = NULL;
 
 static int duplex_duplexing_f(permutation *p __attribute__((unused)))
 {
@@ -266,6 +269,14 @@ static int duplex_duplexing_xor(permutation *p, const size_t start_bit_idx,
 	check_expected(input);
 	check_expected(input_bit_len);
 
+	assert_in_range(start_bit_idx, 0,
+			(dp->rate % 8 == 0 ? dp->rate - 8 : (dp->rate / 8) * 8) + 1);
+	if (input_bit_len != 0) {
+		assert_in_range(input, inbuf, inbuf + ((dp->max_duplex_rate + 7) / 8));
+	}
+	assert_in_range(input_bit_len, 0, dp->max_duplex_rate - ((inbuf - input) * 8));
+	assert_in_range(input_bit_len, 0, dp->rate - start_bit_idx);
+
 	assert_int_equal(duplex_duplexing_order, 0);
 	duplex_duplexing_order++;
 
@@ -280,6 +291,14 @@ static int duplex_duplexing_get(permutation *p, const size_t start_bit_idx,
 	check_expected(output);
 	check_expected(output_bit_len);
 
+	assert_in_range(start_bit_idx, 0,
+			(dp->rate % 8 == 0 ? dp->rate - 8 : (dp->rate / 8) * 8) + 1);
+	if (output_bit_len != 0) {
+		assert_in_range(output, outbuf, outbuf + ((dp->rate + 7) / 8));
+	}
+	assert_in_range(output_bit_len, 0, dp->rate - ((outbuf - output) * 8));
+	assert_in_range(output_bit_len, 0, dp->rate - start_bit_idx);
+
 	assert_int_equal(duplex_duplexing_order, 2);
 	duplex_duplexing_order++;
 
@@ -292,15 +311,13 @@ static int duplex_duplexing_pf(pad *p, permutation *f, const size_t remaining_bi
 	check_expected(f);
 	check_expected(remaining_bits);
 
+	assert_in_range(remaining_bits, 0, dp->rate);
+
 	assert_int_equal(duplex_duplexing_order, 1);
 	duplex_duplexing_order++;
 
 	return mock_type(int);
 }
-
-static unsigned char *inbuf = NULL;
-static unsigned char *outbuf = NULL;
-static duplex *dp = NULL;
 
 static void duplex_duplexing_setup(void **state __attribute__((unused)))
 {
@@ -350,20 +367,20 @@ static void duplex_duplexing_teardown(void **state __attribute__((unused)))
 
 static void duplex_duplexing_success(void)
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_pf, 0);
 
-	expect_memory(duplex_duplexing_get, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_get, p, f);
 	expect_value(duplex_duplexing_get, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_get, output, outbuf);
 	expect_value(duplex_duplexing_get, output_bit_len, CREATE_RATE);
 	will_return(duplex_duplexing_get, 0);
 
@@ -409,20 +426,20 @@ static void duplex_duplexing_in_null_ilen_nonzero(void **state __attribute__((un
 
 static void duplex_duplexing_in_null_ilen_zero(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
 	expect_value(duplex_duplexing_xor, input, NULL);
 	expect_value(duplex_duplexing_xor, input_bit_len, 0);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, 0);
 	will_return(duplex_duplexing_pf, 0);
 
-	expect_memory(duplex_duplexing_get, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_get, p, f);
 	expect_value(duplex_duplexing_get, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_get, output, outbuf);
 	expect_value(duplex_duplexing_get, output_bit_len, CREATE_RATE);
 	will_return(duplex_duplexing_get, 0);
 
@@ -440,20 +457,20 @@ static void duplex_duplexing_in_null_ilen_zero(void **state __attribute__((unuse
 
 static void duplex_duplexing_in_nonnull_ilen_zero(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, 0);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, 0);
 	will_return(duplex_duplexing_pf, 0);
 
-	expect_memory(duplex_duplexing_get, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_get, p, f);
 	expect_value(duplex_duplexing_get, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_get, output, outbuf);
 	expect_value(duplex_duplexing_get, output_bit_len, CREATE_RATE);
 	will_return(duplex_duplexing_get, 0);
 
@@ -485,18 +502,18 @@ static void duplex_duplexing_out_null_olen_nonzero(void **state __attribute__((u
 
 static void duplex_duplexing_out_null_olen_zero(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_pf, 0);
 
-	expect_memory(duplex_duplexing_get, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_get, p, f);
 	expect_value(duplex_duplexing_get, start_bit_idx, 0);
 	expect_value(duplex_duplexing_get, output, NULL);
 	expect_value(duplex_duplexing_get, output_bit_len, 0);
@@ -516,20 +533,20 @@ static void duplex_duplexing_out_null_olen_zero(void **state __attribute__((unus
 
 static void duplex_duplexing_out_nonnull_olen_zero(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_pf, 0);
 
-	expect_memory(duplex_duplexing_get, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_get, p, f);
 	expect_value(duplex_duplexing_get, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_get, output, outbuf);
 	expect_value(duplex_duplexing_get, output_bit_len, 0);
 	will_return(duplex_duplexing_get, 0);
 
@@ -561,20 +578,20 @@ static void duplex_duplexing_ilen_gt_drate(void **state __attribute__((unused)))
 
 static void duplex_duplexing_ilen_1_left(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, dp->max_duplex_rate - 1);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, dp->max_duplex_rate - 1);
 	will_return(duplex_duplexing_pf, 0);
 
-	expect_memory(duplex_duplexing_get, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_get, p, f);
 	expect_value(duplex_duplexing_get, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_get, output, outbuf);
 	expect_value(duplex_duplexing_get, output_bit_len, CREATE_RATE);
 	will_return(duplex_duplexing_get, 0);
 
@@ -592,20 +609,20 @@ static void duplex_duplexing_ilen_1_left(void **state __attribute__((unused)))
 
 static void duplex_duplexing_ilen_max(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, dp->max_duplex_rate);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, dp->max_duplex_rate);
 	will_return(duplex_duplexing_pf, 0);
 
-	expect_memory(duplex_duplexing_get, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_get, p, f);
 	expect_value(duplex_duplexing_get, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_get, output, outbuf);
 	expect_value(duplex_duplexing_get, output_bit_len, CREATE_RATE);
 	will_return(duplex_duplexing_get, 0);
 
@@ -637,20 +654,20 @@ static void duplex_duplexing_olen_gt_rate(void **state __attribute__((unused)))
 
 static void duplex_duplexing_olen_1_left(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_pf, 0);
 
-	expect_memory(duplex_duplexing_get, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_get, p, f);
 	expect_value(duplex_duplexing_get, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_get, output, outbuf);
 	expect_value(duplex_duplexing_get, output_bit_len, dp->rate - 1);
 	will_return(duplex_duplexing_get, 0);
 
@@ -668,20 +685,20 @@ static void duplex_duplexing_olen_1_left(void **state __attribute__((unused)))
 
 static void duplex_duplexing_olen_max(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_pf, 0);
 
-	expect_memory(duplex_duplexing_get, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_get, p, f);
 	expect_value(duplex_duplexing_get, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_get, output, outbuf);
 	expect_value(duplex_duplexing_get, output_bit_len, dp->rate);
 	will_return(duplex_duplexing_get, 0);
 
@@ -699,9 +716,9 @@ static void duplex_duplexing_olen_max(void **state __attribute__((unused)))
 
 static void duplex_duplexing_xor_fail(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_xor, 1);
 
@@ -725,14 +742,14 @@ static void duplex_duplexing_xor_fail(void **state __attribute__((unused)))
 
 static void duplex_duplexing_pf_fail(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_pf, 1);
 
@@ -756,20 +773,20 @@ static void duplex_duplexing_pf_fail(void **state __attribute__((unused)))
 
 static void duplex_duplexing_get_fail(void **state __attribute__((unused)))
 {
-	expect_memory(duplex_duplexing_xor, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_xor, p, f);
 	expect_value(duplex_duplexing_xor, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_xor, input, inbuf);
 	expect_value(duplex_duplexing_xor, input_bit_len, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_xor, 0);
 
-	expect_memory(duplex_duplexing_pf, p, p, sizeof(pad));
-	expect_memory(duplex_duplexing_pf, f, f, sizeof(permutation));
+	expect_value(duplex_duplexing_pf, p, p);
+	expect_value(duplex_duplexing_pf, f, f);
 	expect_value(duplex_duplexing_pf, remaining_bits, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_pf, 0);
 
-	expect_memory(duplex_duplexing_get, p, f, sizeof(permutation));
+	expect_value(duplex_duplexing_get, p, f);
 	expect_value(duplex_duplexing_get, start_bit_idx, 0);
-	expect_memory(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8);
+	expect_value(duplex_duplexing_get, output, outbuf);
 	expect_value(duplex_duplexing_get, output_bit_len, CREATE_RATE);
 	will_return(duplex_duplexing_get, 1);
 
@@ -793,17 +810,17 @@ static void duplex_duplexing_get_fail(void **state __attribute__((unused)))
 
 static void duplex_duplexing_diff_ilens(void **state __attribute__((unused)))
 {
-	expect_memory_count(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8, -1);
-	expect_memory_count(duplex_duplexing_xor, p, f, sizeof(permutation), -1);
+	expect_value_count(duplex_duplexing_xor, input, inbuf, -1);
+	expect_value_count(duplex_duplexing_xor, p, f, -1);
 	expect_value_count(duplex_duplexing_xor, start_bit_idx, 0, -1);
 	will_return_count(duplex_duplexing_xor, 0, -1);
 
-	expect_memory_count(duplex_duplexing_pf, p, p, sizeof(pad), -1);
-	expect_memory_count(duplex_duplexing_pf, f, f, sizeof(permutation), -1);
+	expect_value_count(duplex_duplexing_pf, p, p, -1);
+	expect_value_count(duplex_duplexing_pf, f, f, -1);
 	will_return_count(duplex_duplexing_pf, 0, -1);
 
-	expect_memory_count(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8, -1);
-	expect_memory_count(duplex_duplexing_get, p, f, sizeof(permutation), -1);
+	expect_value_count(duplex_duplexing_get, output, outbuf, -1);
+	expect_value_count(duplex_duplexing_get, p, f, -1);
 	expect_value_count(duplex_duplexing_get, start_bit_idx, 0, -1);
 	will_return_count(duplex_duplexing_get, 0, -1);
 
@@ -829,17 +846,17 @@ static void duplex_duplexing_diff_ilens(void **state __attribute__((unused)))
 
 static void duplex_duplexing_diff_olens(void **state __attribute__((unused)))
 {
-	expect_memory_count(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8, -1);
-	expect_memory_count(duplex_duplexing_xor, p, f, sizeof(permutation), -1);
+	expect_value_count(duplex_duplexing_xor, input, inbuf, -1);
+	expect_value_count(duplex_duplexing_xor, p, f, -1);
 	expect_value_count(duplex_duplexing_xor, start_bit_idx, 0, -1);
 	will_return_count(duplex_duplexing_xor, 0, -1);
 
-	expect_memory_count(duplex_duplexing_pf, p, p, sizeof(pad), -1);
-	expect_memory_count(duplex_duplexing_pf, f, f, sizeof(permutation), -1);
+	expect_value_count(duplex_duplexing_pf, p, p, -1);
+	expect_value_count(duplex_duplexing_pf, f, f, -1);
 	will_return_count(duplex_duplexing_pf, 0, -1);
 
-	expect_memory_count(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8, -1);
-	expect_memory_count(duplex_duplexing_get, p, f, sizeof(permutation), -1);
+	expect_value_count(duplex_duplexing_get, output, outbuf, -1);
+	expect_value_count(duplex_duplexing_get, p, f, -1);
 	expect_value_count(duplex_duplexing_get, start_bit_idx, 0, -1);
 	will_return_count(duplex_duplexing_get, 0, -1);
 
@@ -889,17 +906,17 @@ static void duplex_duplexing_diff_rates(void **state __attribute__((unused)))
 	assert_non_null(outbuf);
 	memset(outbuf, OUTBUF_PATTERN, CREATE_RATE / 8);
 
-	expect_memory_count(duplex_duplexing_xor, input, inbuf, CREATE_RATE / 8, -1);
-	expect_memory_count(duplex_duplexing_xor, p, f, sizeof(permutation), -1);
+	expect_value_count(duplex_duplexing_xor, input, inbuf, -1);
+	expect_value_count(duplex_duplexing_xor, p, f, -1);
 	expect_value_count(duplex_duplexing_xor, start_bit_idx, 0, -1);
 	will_return_count(duplex_duplexing_xor, 0, -1);
 
 	expect_value_count(duplex_duplexing_pf, p, p, -1);
-	expect_memory_count(duplex_duplexing_pf, f, f, sizeof(permutation), -1);
+	expect_value_count(duplex_duplexing_pf, f, f, -1);
 	will_return_count(duplex_duplexing_pf, 0, -1);
 
-	expect_memory_count(duplex_duplexing_get, output, outbuf, CREATE_RATE / 8, -1);
-	expect_memory_count(duplex_duplexing_get, p, f, sizeof(permutation), -1);
+	expect_value_count(duplex_duplexing_get, output, outbuf, -1);
+	expect_value_count(duplex_duplexing_get, p, f, -1);
 	expect_value_count(duplex_duplexing_get, start_bit_idx, 0, -1);
 	will_return_count(duplex_duplexing_get, 0, -1);
 
