@@ -91,8 +91,6 @@ constr_result sponge_absorb(sponge *sp, const unsigned char *input,
 		return CONSTR_FATAL;
 	}
 
-	assert(internal->remaining_bits < sp->rate);
-
 	if (input == NULL) {
 		return CONSTR_FAILURE;
 	}
@@ -101,6 +99,8 @@ constr_result sponge_absorb(sponge *sp, const unsigned char *input,
 	if (internal->phase != PHASE_ABSORB) {
 		return CONSTR_FAILURE;
 	}
+
+	assert(internal->remaining_bits < sp->rate);
 
 	/* Don't allow absorbs with partial bytes, except at the end.
 	 * Rationale: The reference implementation doesn't allow this either (and it's
@@ -115,6 +115,7 @@ constr_result sponge_absorb(sponge *sp, const unsigned char *input,
 	/* Finish absorbing any started block from a previous sponge_absorb. */
 	size_t bits_to_block = sp->rate - internal->remaining_bits;
 	if (in_remaining >= bits_to_block && internal->remaining_bits != 0) {
+		assert(bits_to_block != 0);
 		assert(bits_to_block % 8 == 0);
 
 		if (sp->f->xor(sp->f, internal->remaining_bits, in_cur,
@@ -177,12 +178,12 @@ constr_result sponge_absorb_final(sponge *sp)
 		return CONSTR_FATAL;
 	}
 
-	assert(internal->remaining_bits < sp->rate);
-
 	/* Only absorb in absorb phase. */
 	if (internal->phase != PHASE_ABSORB) {
 		return CONSTR_FAILURE;
 	}
+
+	assert(internal->remaining_bits < sp->rate);
 
 	/* Apply padding and permute last block(s). */
 	if (sp->p->pf(sp->p, sp->f, internal->remaining_bits) != 0) {
