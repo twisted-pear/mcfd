@@ -291,7 +291,8 @@ static int sponge_pf(pad *p, permutation *f, const size_t remaining_bits)
 	return mock_type(int);
 }
 
-static void sponge_squeeze_success(const size_t expected_remaining)
+static size_t sponge_squeeze_only(const size_t expected_remaining,
+		const size_t bit_length)
 {
 	sponge_order = 0;
 
@@ -308,13 +309,22 @@ static void sponge_squeeze_success(const size_t expected_remaining)
 		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
 	}
 
+	assert_true(expected_remaining <= sp->rate);
 	assert_true(expected_remaining % 8 == 0);
+	assert_true(expected_remaining != 0);
 
 	size_t remaining_bits = expected_remaining;
-	size_t out_bits = TESTBUF_SIZE * 8;
+	size_t out_bits = bit_length;
 	unsigned char *out_buf = testbuf;
 
 	do {
+		if (remaining_bits == 0) {
+			expect_value(sponge_f, p, f);
+			will_return(sponge_f, 0);
+
+			remaining_bits = sp->rate;
+		}
+
 		size_t bits_taken = remaining_bits > out_bits ? out_bits : remaining_bits;
 
 		expect_value(sponge_get, p, f);
@@ -326,26 +336,24 @@ static void sponge_squeeze_success(const size_t expected_remaining)
 		remaining_bits -= bits_taken;
 		out_bits -= bits_taken;
 		out_buf += bits_taken / 8;
+	} while (out_bits != 0 || remaining_bits == 0);
 
-		if (remaining_bits == 0) {
-			expect_value(sponge_f, p, f);
-			will_return(sponge_f, 0);
-
-			remaining_bits = sp->rate;
-		}
-	} while (out_bits != 0);
-
-	assert_int_equal(sponge_squeeze(sp, testbuf, TESTBUF_SIZE * 8), CONSTR_SUCCESS);
+	assert_int_equal(sponge_squeeze(sp, testbuf, bit_length), CONSTR_SUCCESS);
 
 	for (i = 0; i < TESTBUF_SIZE / 8; i++) {
 		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
 	}
+
+	return remaining_bits;
 }
 
-static void sponge_absorb_success(const size_t expected_remaining, const int final_only)
+static void sponge_squeeze_success(const size_t expected_remaining)
 {
-	sponge_order = 0;
+	(void) sponge_squeeze_only(expected_remaining, TESTBUF_SIZE * 8);
+}
 
+static size_t sponge_absorb_only(const size_t expected_remaining, const size_t bit_length)
+{
 	assert_int_equal(sponge_squeeze(sp, testbuf, TESTBUF_SIZE * 8), CONSTR_FAILURE);
 
 	size_t i;
@@ -353,47 +361,61 @@ static void sponge_absorb_success(const size_t expected_remaining, const int fin
 		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
 	}
 
-	if (final_only == 0) {
-		assert_true(expected_remaining % 8 == 0);
+	sponge_order = 0;
 
-		size_t remaining_bits = expected_remaining;
-		size_t in_bits = TESTBUF_SIZE * 8;
-		unsigned char *in_buf = testbuf;
+	assert_true(expected_remaining % 8 == 0);
+	assert_true(expected_remaining < sp->rate);
+	assert_true(bit_length <= TESTBUF_SIZE * 8);
 
-		do {
-			size_t bits_to_full = sp->rate - remaining_bits;
-			size_t bits_taken = bits_to_full > in_bits ? in_bits
-				: bits_to_full;
+	size_t remaining_bits = expected_remaining;
+	size_t in_bits = bit_length;
+	unsigned char *in_buf = testbuf;
 
-			expect_value(sponge_xor, p, f);
-			expect_value(sponge_xor, start_bit_idx, remaining_bits);
-			expect_value(sponge_xor, input, in_buf);
-			expect_value(sponge_xor, input_bit_len, bits_taken);
-			will_return(sponge_xor, 0);
+	do {
+		if (remaining_bits == sp->rate) {
+			expect_value(sponge_f, p, f);
+			will_return(sponge_f, 0);
 
-			remaining_bits += bits_taken;
-			in_bits -= bits_taken;
-			in_buf += bits_taken / 8;
-
-			if (remaining_bits == sp->rate) {
-				expect_value(sponge_f, p, f);
-				will_return(sponge_f, 0);
-
-				remaining_bits = 0;
-			}
-		} while (in_bits != 0);
-
-		assert_int_equal(sponge_absorb(sp, testbuf, TESTBUF_SIZE * 8),
-				CONSTR_SUCCESS);
-
-		for (i = 0; i < TESTBUF_SIZE / 8; i++) {
-			assert_int_equal(testbuf[i], TESTBUF_PATTERN);
+			remaining_bits = 0;
 		}
+
+		size_t bits_to_full = sp->rate - remaining_bits;
+		size_t bits_taken = bits_to_full > in_bits ? in_bits : bits_to_full;
+
+		expect_value(sponge_xor, p, f);
+		expect_value(sponge_xor, start_bit_idx, remaining_bits);
+		expect_value(sponge_xor, input, in_buf);
+		expect_value(sponge_xor, input_bit_len, bits_taken);
+		will_return(sponge_xor, 0);
+
+		remaining_bits += bits_taken;
+		in_bits -= bits_taken;
+		in_buf += bits_taken / 8;
+	} while (in_bits != 0 || remaining_bits == sp->rate);
+
+	assert_true(remaining_bits < sp->rate);
+
+	assert_int_equal(sponge_absorb(sp, testbuf, bit_length), CONSTR_SUCCESS);
+
+	for (i = 0; i < TESTBUF_SIZE / 8; i++) {
+		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
+	}
+
+	return remaining_bits;
+}
+
+static void sponge_absorb_final_only(const size_t expected_remaining)
+{
+	assert_int_equal(sponge_squeeze(sp, testbuf, TESTBUF_SIZE * 8), CONSTR_FAILURE);
+
+	size_t i;
+	for (i = 0; i < TESTBUF_SIZE / 8; i++) {
+		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
 	}
 
 	expect_value(sponge_pf, p, p);
 	expect_value(sponge_pf, f, f);
-	expect_in_range(sponge_pf, remaining_bits, 0, sp->rate - 1);
+	expect_value(sponge_pf, remaining_bits, expected_remaining);
 	will_return(sponge_pf, 0);
 
 	assert_int_equal(sponge_absorb_final(sp), CONSTR_SUCCESS);
@@ -401,6 +423,12 @@ static void sponge_absorb_success(const size_t expected_remaining, const int fin
 	for (i = 0; i < TESTBUF_SIZE / 8; i++) {
 		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
 	}
+}
+
+static void sponge_absorb_success(const size_t expected_remaining)
+{
+	size_t remaining_bits = sponge_absorb_only(expected_remaining, TESTBUF_SIZE * 8);
+	sponge_absorb_final_only(remaining_bits);
 }
 
 static void sponge_absorb_setup(void **state __attribute__((unused)))
@@ -452,7 +480,7 @@ static void sponge_absorb_sp_null(void **state __attribute__((unused)))
 		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
 	}
 
-	sponge_absorb_success(0, 0);
+	sponge_absorb_success(0);
 	sponge_squeeze_success(sp->rate);
 }
 
@@ -465,14 +493,12 @@ static void sponge_absorb_in_null(void **state __attribute__((unused)))
 		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
 	}
 
-	sponge_absorb_success(0, 0);
+	sponge_absorb_success(0);
 	sponge_squeeze_success(sp->rate);
 }
 
 static void sponge_absorb_wrong_phase(void **state __attribute__((unused)))
 {
-	sponge_absorb_success(0, 0);
-
 	assert_int_equal(sponge_absorb(sp, testbuf, TESTBUF_SIZE), CONSTR_FAILURE);
 
 	size_t i;
@@ -491,37 +517,48 @@ static void sponge_absorb_wrong_phase(void **state __attribute__((unused)))
 
 static void sponge_absorb_len_zero(void **state __attribute__((unused)))
 {
-	expect_value(sponge_xor, p, f);
-	expect_value(sponge_xor, start_bit_idx, 0);
-	expect_value(sponge_xor, input, testbuf);
-	expect_value(sponge_xor, input_bit_len, 0);
-	will_return(sponge_xor, 0);
+	assert_int_equal(sponge_absorb_only(0, 0), 0);
 
-	assert_int_equal(sponge_absorb(sp, testbuf, 0), CONSTR_SUCCESS);
+	sponge_absorb_success(0);
+	sponge_squeeze_success(sp->rate);
+}
+
+static void sponge_absorb_len_gt_rate(void **state __attribute__((unused)))
+{
+	assert_int_equal(sponge_absorb_only(0, sp->rate + 1), 1);
+
+	assert_int_equal(sponge_absorb(sp, testbuf, TESTBUF_SIZE * 8), CONSTR_FAILURE);
 
 	size_t i;
 	for (i = 0; i < TESTBUF_SIZE; i++) {
 		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
 	}
 
-	sponge_absorb_success(0, 0);
+	sponge_absorb_final_only(1);
 	sponge_squeeze_success(sp->rate);
-}
-
-static void sponge_absorb_len_gt_rate(void **state __attribute__((unused)))
-{
 }
 
 static void sponge_absorb_len_eq_rate(void **state __attribute__((unused)))
 {
+	assert_int_equal(sponge_absorb_only(0, sp->rate), 0);
+
+	sponge_absorb_success(0);
+	sponge_squeeze_success(sp->rate);
 }
 
 static void sponge_absorb_len_1_left(void **state __attribute__((unused)))
 {
-}
+	assert_int_equal(sponge_absorb_only(0, sp->rate - 1), sp->rate - 1);
 
-static void sponge_absorb_len_odd(void **state __attribute__((unused)))
-{
+	assert_int_equal(sponge_absorb(sp, testbuf, TESTBUF_SIZE * 8), CONSTR_FAILURE);
+
+	size_t i;
+	for (i = 0; i < TESTBUF_SIZE; i++) {
+		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
+	}
+
+	sponge_absorb_final_only(sp->rate - 1);
+	sponge_squeeze_success(sp->rate);
 }
 
 static void sponge_absorb_xor_fail(void **state __attribute__((unused)))
@@ -550,42 +587,124 @@ static void sponge_absorb_diff_rates(void **state __attribute__((unused)))
 
 static void sponge_squeeze_setup(void **state __attribute__((unused)))
 {
+	sponge_order = 0;
+
+	f = calloc(1, sizeof(permutation));
+	assert_non_null(f);
+
+	f->width = CREATE_WIDTH;
+	f->f = sponge_f;
+	f->xor = sponge_xor;
+	f->get = sponge_get;
+
+	p = calloc(1, sizeof(pad));
+	assert_non_null(p);
+
+	p->rate = CREATE_RATE;
+	p->min_bit_len = CREATE_MIN_RATE;
+	p->pf = sponge_pf;
+
+	sp = sponge_init(f, p, CREATE_RATE);
+	assert_non_null(sp);
+
+	assert_true(sp->f == f);
+	assert_true(sp->p == p);
+	assert_true(sp->rate == CREATE_RATE);
+
+	testbuf = calloc(1, TESTBUF_SIZE);
+	assert_non_null(testbuf);
+
+	memset(testbuf, TESTBUF_PATTERN, TESTBUF_SIZE);
+
+	sponge_absorb_success(0);
 }
 
 static void sponge_squeeze_teardown(void **state __attribute__((unused)))
 {
+	free(f);
+	free(p);
+	sponge_free(sp);
+	free(testbuf);
 }
 
 static void sponge_squeeze_sp_null(void **state __attribute__((unused)))
 {
+	assert_int_equal(sponge_squeeze(NULL, testbuf, TESTBUF_SIZE), CONSTR_FAILURE);
+
+	size_t i;
+	for (i = 0; i < TESTBUF_SIZE; i++) {
+		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
+	}
+
+	sponge_squeeze_success(sp->rate);
 }
 
 static void sponge_squeeze_out_null(void **state __attribute__((unused)))
 {
+	assert_int_equal(sponge_squeeze(sp, NULL, 0), CONSTR_FAILURE);
+
+	size_t i;
+	for (i = 0; i < TESTBUF_SIZE; i++) {
+		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
+	}
+
+	sponge_squeeze_success(sp->rate);
 }
 
 static void sponge_squeeze_wrong_phase(void **state __attribute__((unused)))
 {
+	assert_int_equal(sponge_squeeze(sp, testbuf, TESTBUF_SIZE), CONSTR_FAILURE);
+
+	size_t i;
+	for (i = 0; i < TESTBUF_SIZE; i++) {
+		assert_int_equal(testbuf[i], TESTBUF_PATTERN);
+	}
+
+	sponge_absorb_success(0);
+	sponge_squeeze_success(sp->rate);
 }
 
 static void sponge_squeeze_len_zero(void **state __attribute__((unused)))
 {
+	assert_int_equal(sponge_squeeze_only(sp->rate, 0), sp->rate);
+
+	sponge_squeeze_success(sp->rate);
 }
 
 static void sponge_squeeze_len_gt_rate(void **state __attribute__((unused)))
 {
+	assert_int_equal(sponge_squeeze_only(sp->rate, sp->rate + 8), sp->rate - 8);
+
+	sponge_squeeze_success(sp->rate - 8);
 }
 
 static void sponge_squeeze_len_eq_rate(void **state __attribute__((unused)))
 {
+	assert_int_equal(sponge_squeeze_only(sp->rate, sp->rate), sp->rate);
+
+	sponge_squeeze_success(sp->rate);
 }
 
-static void sponge_squeeze_len_1_left(void **state __attribute__((unused)))
+static void sponge_squeeze_len_8_left(void **state __attribute__((unused)))
 {
+	assert_int_equal(sponge_squeeze_only(sp->rate, sp->rate - 8), 8);
+
+	sponge_squeeze_success(8);
 }
 
 static void sponge_squeeze_len_odd(void **state __attribute__((unused)))
 {
+	size_t len;
+	for (len = sp->rate + 1; len <= sp->rate + 7; len++) {
+		assert_int_equal(sponge_squeeze(sp, testbuf, len), CONSTR_FAILURE);
+
+		size_t i;
+		for (i = 0; i < TESTBUF_SIZE; i++) {
+			assert_int_equal(testbuf[i], TESTBUF_PATTERN);
+		}
+	}
+
+	sponge_squeeze_success(sp->rate);
 }
 
 static void sponge_squeeze_get_fail(void **state __attribute__((unused)))
@@ -657,7 +776,7 @@ int run_unit_tests(void)
 		unit_test_setup_teardown(sponge_absorb_in_null,
 				sponge_absorb_setup, sponge_absorb_teardown),
 		unit_test_setup_teardown(sponge_absorb_wrong_phase,
-				sponge_absorb_setup, sponge_absorb_teardown),
+				sponge_squeeze_setup, sponge_squeeze_teardown),
 		unit_test_setup_teardown(sponge_absorb_len_zero,
 				sponge_absorb_setup, sponge_absorb_teardown),
 		unit_test_setup_teardown(sponge_absorb_len_gt_rate,
@@ -665,8 +784,6 @@ int run_unit_tests(void)
 		unit_test_setup_teardown(sponge_absorb_len_eq_rate,
 				sponge_absorb_setup, sponge_absorb_teardown),
 		unit_test_setup_teardown(sponge_absorb_len_1_left,
-				sponge_absorb_setup, sponge_absorb_teardown),
-		unit_test_setup_teardown(sponge_absorb_len_odd,
 				sponge_absorb_setup, sponge_absorb_teardown),
 		unit_test_setup_teardown(sponge_absorb_xor_fail,
 				sponge_absorb_setup, sponge_absorb_teardown),
@@ -691,14 +808,15 @@ int run_unit_tests(void)
 		unit_test_setup_teardown(sponge_squeeze_out_null,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
 		unit_test_setup_teardown(sponge_squeeze_wrong_phase,
-				sponge_squeeze_setup, sponge_squeeze_teardown),
+				sponge_absorb_setup, sponge_absorb_teardown),
 		unit_test_setup_teardown(sponge_squeeze_len_zero,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
 		unit_test_setup_teardown(sponge_squeeze_len_gt_rate,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
 		unit_test_setup_teardown(sponge_squeeze_len_eq_rate,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
-		unit_test_setup_teardown(sponge_squeeze_len_1_left,
+		/* Squeeze doesn't support single bits. */
+		unit_test_setup_teardown(sponge_squeeze_len_8_left,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
 		unit_test_setup_teardown(sponge_squeeze_len_odd,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
