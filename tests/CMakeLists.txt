@@ -1,7 +1,24 @@
 add_subdirectory (src)
 
 if (CMAKE_COMPILER_IS_GNUCC)
-	SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lgcov")
+	set_source_files_properties ( ${S_CRYPTO_COMMON} PROPERTIES
+		COMPILE_FLAGS "-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_KECCAK} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_SPONGE} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_SPONGEWRAP} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_MCFD} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_SPONGEPRG} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_KECCAK_RNG} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_DUPLEX} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
+
+	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs")
 endif ()
 
 get_property (S_TEST_UNIT_MAIN GLOBAL PROPERTY S_TEST_UNIT_MAIN)

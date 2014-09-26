@@ -7,7 +7,7 @@ endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra -Wall -pedantic -std=c99 -D_XOPEN_SOURCE=500")
-	set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -fprofile-arcs -ftest-coverage -Werror")
+	set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Werror")
 endif ()
 
 include_directories (include/spongecrypt)
