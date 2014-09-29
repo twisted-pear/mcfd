@@ -453,7 +453,7 @@ static void sponge_dead(void)
 	}
 }
 
-static void setup_sponge(void)
+static void setup_sponge(size_t rate)
 {
 	f = calloc(1, sizeof(permutation));
 	assert_non_null(f);
@@ -466,16 +466,16 @@ static void setup_sponge(void)
 	p = calloc(1, sizeof(pad));
 	assert_non_null(p);
 
-	p->rate = CREATE_RATE;
+	p->rate = rate;
 	p->min_bit_len = CREATE_MIN_RATE;
 	p->pf = sponge_pf;
 
-	sp = sponge_init(f, p, CREATE_RATE);
+	sp = sponge_init(f, p, rate);
 	assert_non_null(sp);
 
 	assert_true(sp->f == f);
 	assert_true(sp->p == p);
-	assert_true(sp->rate == CREATE_RATE);
+	assert_true(sp->rate == rate);
 }
 
 static void teardown_sponge(void)
@@ -502,7 +502,7 @@ static void sponge_absorb_setup(void **state __attribute__((unused)))
 {
 	sponge_order = 0;
 
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	setup_testbuf();
 }
@@ -615,7 +615,7 @@ static void sponge_absorb_xor_fail(void **state __attribute__((unused)))
 	setup_testbuf();
 
 	/* First XOR fails */
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	assert_int_equal(sponge_absorb_only(0, 8), 8);
 	sponge_order = 0;
@@ -638,7 +638,7 @@ static void sponge_absorb_xor_fail(void **state __attribute__((unused)))
 	teardown_sponge();
 
 	/* Second XOR fails */
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	assert_int_equal(sponge_absorb_only(0, 8), 8);
 	sponge_order = 0;
@@ -669,7 +669,7 @@ static void sponge_absorb_xor_fail(void **state __attribute__((unused)))
 	teardown_sponge();
 
 	/* Third XOR fails */
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	assert_int_equal(sponge_absorb_only(0, 8), 8);
 	sponge_order = 0;
@@ -716,7 +716,7 @@ static void sponge_absorb_f_fail(void **state __attribute__((unused)))
 	setup_testbuf();
 
 	/* First F fails */
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	assert_int_equal(sponge_absorb_only(0, 8), 8);
 	sponge_order = 0;
@@ -742,7 +742,7 @@ static void sponge_absorb_f_fail(void **state __attribute__((unused)))
 	teardown_sponge();
 
 	/* Second F fails */
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	assert_int_equal(sponge_absorb_only(0, 8), 8);
 	sponge_order = 0;
@@ -799,21 +799,66 @@ static void sponge_absorb_pf_fail(void **state __attribute__((unused)))
 
 static void sponge_absorb_multiple_diff_splits(void **state __attribute__((unused)))
 {
+	setup_testbuf();
+
+	size_t split;
+	for (split = 0; split <= TESTBUF_SIZE * 8; split += 8) {
+		setup_sponge(CREATE_RATE);
+
+		size_t remaining = sponge_absorb_only(0, split);
+		assert_in_range(remaining, 0, sp->rate - 1);
+
+		remaining = sponge_absorb_only(remaining, (TESTBUF_SIZE * 8) - split);
+		assert_in_range(remaining, 0, sp->rate - 1);
+
+		sponge_absorb_final_only(remaining);
+
+		teardown_sponge();
+	}
+
+	teardown_testbuf();
 }
 
 static void sponge_absorb_diff_lens(void **state __attribute__((unused)))
 {
+	setup_testbuf();
+
+	size_t length;
+	for (length = 0; length <= TESTBUF_SIZE * 8; length++) {
+		setup_sponge(CREATE_RATE);
+
+		size_t remaining = sponge_absorb_only(0, length);
+		assert_in_range(remaining, 0, sp->rate - 1);
+
+		sponge_absorb_final_only(remaining);
+
+		teardown_sponge();
+	}
+
+	teardown_testbuf();
 }
 
 static void sponge_absorb_diff_rates(void **state __attribute__((unused)))
 {
+	setup_testbuf();
+
+	size_t rate;
+	for (rate = ((CREATE_MIN_RATE + 7) / 8) * 8; rate < CREATE_WIDTH; rate += 8) {
+		setup_sponge(rate);
+
+		sponge_absorb_success(0);
+
+		teardown_sponge();
+	}
+
+	teardown_testbuf();
 }
 
 static void sponge_squeeze_setup(void **state __attribute__((unused)))
 {
 	sponge_order = 0;
 
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	setup_testbuf();
 
@@ -912,7 +957,7 @@ static void sponge_squeeze_get_fail(void **state __attribute__((unused)))
 	setup_testbuf();
 
 	/* First GET fails */
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	sponge_absorb_success(0);
 	assert_int_equal(sponge_squeeze_only(sp->rate, 8), sp->rate - 8);
@@ -936,7 +981,7 @@ static void sponge_squeeze_get_fail(void **state __attribute__((unused)))
 	teardown_sponge();
 
 	/* Second GET fails */
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	sponge_absorb_success(0);
 	assert_int_equal(sponge_squeeze_only(sp->rate, 8), sp->rate - 8);
@@ -968,7 +1013,7 @@ static void sponge_squeeze_get_fail(void **state __attribute__((unused)))
 	teardown_sponge();
 
 	/* Third XOR fails */
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	sponge_absorb_success(0);
 	assert_int_equal(sponge_squeeze_only(sp->rate, 8), sp->rate - 8);
@@ -1016,7 +1061,7 @@ static void sponge_squeeze_f_fail(void **state __attribute__((unused)))
 	setup_testbuf();
 
 	/* First F fails */
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	sponge_absorb_success(0);
 	assert_int_equal(sponge_squeeze_only(sp->rate, 8), sp->rate - 8);
@@ -1043,7 +1088,7 @@ static void sponge_squeeze_f_fail(void **state __attribute__((unused)))
 	teardown_sponge();
 
 	/* Second F fails */
-	setup_sponge();
+	setup_sponge(CREATE_RATE);
 
 	sponge_absorb_success(0);
 	assert_int_equal(sponge_squeeze_only(sp->rate, 8), sp->rate - 8);
@@ -1082,14 +1127,40 @@ static void sponge_squeeze_f_fail(void **state __attribute__((unused)))
 
 static void sponge_squeeze_multiple_diff_splits(void **state __attribute__((unused)))
 {
-}
+	setup_testbuf();
 
-static void sponge_squeeze_diff_lens(void **state __attribute__((unused)))
-{
+	size_t split;
+	for (split = 0; split <= TESTBUF_SIZE * 8; split += 8) {
+		setup_sponge(CREATE_RATE);
+		sponge_absorb_success(0);
+
+		size_t remaining = sponge_squeeze_only(sp->rate, split);
+		assert_in_range(remaining, 1, sp->rate);
+
+		remaining = sponge_squeeze_only(remaining, (TESTBUF_SIZE * 8) - split);
+		assert_in_range(remaining, 1, sp->rate);
+
+		teardown_sponge();
+	}
+
+	teardown_testbuf();
 }
 
 static void sponge_squeeze_diff_rates(void **state __attribute__((unused)))
 {
+	setup_testbuf();
+
+	size_t rate;
+	for (rate = ((CREATE_MIN_RATE + 7) / 8) * 8; rate < CREATE_WIDTH; rate += 8) {
+		setup_sponge(rate);
+		sponge_absorb_final_only(0);
+
+		sponge_squeeze_success(sp->rate);
+
+		teardown_sponge();
+	}
+
+	teardown_testbuf();
 }
 
 int run_unit_tests(void)
@@ -1184,7 +1255,6 @@ int run_unit_tests(void)
 		unit_test(sponge_squeeze_get_fail),
 		unit_test(sponge_squeeze_f_fail),
 		unit_test(sponge_squeeze_multiple_diff_splits),
-		unit_test(sponge_squeeze_diff_lens),
 		unit_test(sponge_squeeze_diff_rates)
 	};
 
