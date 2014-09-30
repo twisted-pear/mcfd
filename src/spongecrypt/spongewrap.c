@@ -145,9 +145,9 @@ void spongewrap_free(spongewrap *w)
 	free(w);
 }
 
-int spongewrap_wrap(spongewrap *w, const unsigned char *a, const size_t a_byte_len,
-		const unsigned char *b, const size_t b_byte_len, unsigned char *c,
-		unsigned char *t, const size_t t_byte_len)
+constr_result spongewrap_wrap(spongewrap *w, const unsigned char *a,
+		const size_t a_byte_len, const unsigned char *b, const size_t b_byte_len,
+		unsigned char *c, unsigned char *t, const size_t t_byte_len)
 {
 	assert(w != NULL);
 	assert((a != NULL) | (a_byte_len == 0));
@@ -226,9 +226,9 @@ int spongewrap_wrap(spongewrap *w, const unsigned char *a, const size_t a_byte_l
 	return 0;
 }
 
-int spongewrap_unwrap(spongewrap *w, const unsigned char *a, const size_t a_byte_len,
-		const unsigned char *c, const size_t c_byte_len, const unsigned char *t,
-		const size_t t_byte_len, unsigned char *b)
+constr_result spongewrap_unwrap(spongewrap *w, const unsigned char *a,
+		const size_t a_byte_len, const unsigned char *c, const size_t c_byte_len,
+		const unsigned char *t, const size_t t_byte_len, unsigned char *b)
 {
 	assert(w != NULL);
 	assert((a != NULL) | (a_byte_len == 0));

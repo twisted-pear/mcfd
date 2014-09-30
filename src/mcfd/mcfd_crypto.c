@@ -20,9 +20,25 @@
 #define KDF_RATE 576
 
 struct mcfd_cipher_t {
+	enum { CIPHER_READY = 0, CIPHER_BROKEN } state;
 	spongewrap *w;
 	unsigned char nonce[MCFD_NONCE_BYTES];
 };
+
+static void break_cipher(mcfd_cipher *cipher)
+{
+	assert(cipher != NULL);
+	assert(cipher->w != NULL);
+
+	keccakPad_10_1_free(cipher->w->p);
+	keccakF_1600_free(cipher->w->f);
+	spongewrap_free(cipher->w);
+
+	cipher->state = CIPHER_BROKEN;
+	cipher->w = NULL;
+
+	explicit_bzero(cipher->nonce, sizeof(cipher->nonce));
+}
 
 static void nonce_succ(unsigned char *nonce)
 {
@@ -204,9 +220,10 @@ mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned ch
 		goto cipher_fail;
 	}
 
+	cipher->state = CIPHER_READY;
 	cipher->w = w;
 
-	mcfd_cipher_set_nonce(cipher, init_nonce);
+	assert(mcfd_cipher_set_nonce(cipher, init_nonce) == 0);
 
 	return cipher;
 
@@ -224,26 +241,29 @@ permutation_fail:
 void mcfd_cipher_free(mcfd_cipher *cipher)
 {
 	assert(cipher != NULL);
-	assert(cipher->w != NULL);
 
-	keccakPad_10_1_free(cipher->w->p);
-	keccakF_1600_free(cipher->w->f);
-	spongewrap_free(cipher->w);
-
-	explicit_bzero(cipher->nonce, sizeof(cipher->nonce));
+	if (cipher->state != CIPHER_BROKEN) {
+		break_cipher(cipher);
+	}
 
 	free(cipher);
 }
 
-void mcfd_cipher_set_nonce(mcfd_cipher *cipher, const unsigned char *nonce)
+int mcfd_cipher_set_nonce(mcfd_cipher *cipher, const unsigned char *nonce)
 {
 	assert(cipher != NULL);
+
+	if (cipher->state != CIPHER_READY) {
+		return 1;
+	}
 
 	if (nonce == NULL) {
 		memset(cipher->nonce, 0, sizeof(cipher->nonce));
 	} else {
 		memcpy(cipher->nonce, nonce, sizeof(cipher->nonce));
 	}
+
+	return 0;
 }
 
 int mcfd_cipher_encrypt(mcfd_cipher *cipher, const unsigned char *plaintext,
@@ -251,12 +271,24 @@ int mcfd_cipher_encrypt(mcfd_cipher *cipher, const unsigned char *plaintext,
 		unsigned char *tag)
 {
 	assert(cipher != NULL);
+
+	if (cipher->state != CIPHER_READY) {
+		return 1;
+	}
+
 	assert(cipher->w != NULL);
 
 	nonce_succ(cipher->nonce);
 
-	return spongewrap_wrap(cipher->w, cipher->nonce, sizeof(cipher->nonce), plaintext,
-			plaintext_bytes, ciphertext, tag, MCFD_TAG_BYTES);
+	if (spongewrap_wrap(cipher->w, cipher->nonce, sizeof(cipher->nonce), plaintext,
+				plaintext_bytes, ciphertext, tag, MCFD_TAG_BYTES)
+			!= CONSTR_SUCCESS) {
+		break_cipher(cipher);
+
+		return 1;
+	}
+
+	return 0;
 }
 
 int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
@@ -264,10 +296,22 @@ int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
 		unsigned char *plaintext)
 {
 	assert(cipher != NULL);
+
+	if (cipher->state != CIPHER_READY) {
+		return 1;
+	}
+
 	assert(cipher->w != NULL);
 
 	nonce_succ(cipher->nonce);
 
-	return spongewrap_unwrap(cipher->w, cipher->nonce, sizeof(cipher->nonce),
-			ciphertext, ciphertext_bytes, tag, MCFD_TAG_BYTES, plaintext);
+	if (spongewrap_unwrap(cipher->w, cipher->nonce, sizeof(cipher->nonce), ciphertext,
+				ciphertext_bytes, tag, MCFD_TAG_BYTES, plaintext)
+			!= CONSTR_SUCCESS) {
+		break_cipher(cipher);
+
+		return 1;
+	}
+
+	return 0;
 }

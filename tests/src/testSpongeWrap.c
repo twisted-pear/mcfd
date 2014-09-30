@@ -112,14 +112,14 @@ static int testInvalid_tag(spongewrap **w_enc, spongewrap **w_dec, struct cipher
 	size_t err_idx;
 	for (err_idx = 0; err_idx < T_LEN_MAX; err_idx++) {
 		if (spongewrap_wrap(*w_enc, a, A_LEN_MAX, b, B_LEN_MAX, c, t,
-					T_LEN_MAX) != 0) {
+					T_LEN_MAX) != CONSTR_SUCCESS) {
 			return 1;
 		}
 
 		t[err_idx] ^= ERR_TOGGLE_BITS;
 
 		if (spongewrap_unwrap(*w_dec, a, A_LEN_MAX, c, B_LEN_MAX, t, T_LEN_MAX,
-					d) == 0) {
+					d) == CONSTR_SUCCESS) {
 			return 1;
 		}
 
@@ -158,14 +158,14 @@ static int testInvalid_a(spongewrap **w_enc, spongewrap **w_dec, struct cipherct
 		memset(a, A_PATTERN, A_LEN_MAX);
 
 		if (spongewrap_wrap(*w_enc, a, A_LEN_MAX, b, B_LEN_MAX, c, t,
-					T_LEN_MAX) != 0) {
+					T_LEN_MAX) != CONSTR_SUCCESS) {
 			return 1;
 		}
 
 		a[err_idx] ^= ERR_TOGGLE_BITS;
 
 		if (spongewrap_unwrap(*w_dec, a, A_LEN_MAX, c, B_LEN_MAX, t, T_LEN_MAX,
-					d) == 0) {
+					d) == CONSTR_SUCCESS) {
 			return 1;
 		}
 
@@ -203,14 +203,14 @@ static int testInvalid_c(spongewrap **w_enc, spongewrap **w_dec, struct cipherct
 	for (err_idx = 0; err_idx < B_LEN_MAX; err_idx++) {
 
 		if (spongewrap_wrap(*w_enc, a, A_LEN_MAX, b, B_LEN_MAX, c, t,
-					T_LEN_MAX) != 0) {
+					T_LEN_MAX) != CONSTR_SUCCESS) {
 			return 1;
 		}
 
 		c[err_idx] ^= ERR_TOGGLE_BITS;
 
 		if (spongewrap_unwrap(*w_dec, a, A_LEN_MAX, c, B_LEN_MAX, t, T_LEN_MAX,
-					d) == 0) {
+					d) == CONSTR_SUCCESS) {
 			return 1;
 		}
 
@@ -240,11 +240,13 @@ static int testEmpty_a_b(spongewrap **w_enc, spongewrap **w_dec,
 
 	size_t t_len;
 	for (t_len = 0; t_len <= T_LEN_MAX; t_len++) {
-		if (spongewrap_wrap(*w_enc, NULL, 0, NULL, 0, NULL, t, t_len) != 0) {
+		if (spongewrap_wrap(*w_enc, NULL, 0, NULL, 0, NULL, t, t_len)
+				!= CONSTR_SUCCESS) {
 			return 1;
 		}
 
-		if (spongewrap_unwrap(*w_dec, NULL, 0, NULL, 0, t, t_len, NULL) != 0) {
+		if (spongewrap_unwrap(*w_dec, NULL, 0, NULL, 0, t, t_len, NULL)
+				!= CONSTR_SUCCESS) {
 			return 1;
 		}
 	}
@@ -264,11 +266,13 @@ static int testEncDec_empty_a(spongewrap **w_enc, spongewrap **w_dec,
 
 	size_t b_len;
 	for (b_len = 0; b_len <= B_LEN_MAX; b_len++) {
-		if (spongewrap_wrap(*w_enc, NULL, 0, b, b_len, c, t, T_LEN_MAX) != 0) {
+		if (spongewrap_wrap(*w_enc, NULL, 0, b, b_len, c, t, T_LEN_MAX)
+				!= CONSTR_SUCCESS) {
 			return 1;
 		}
 
-		if (spongewrap_unwrap(*w_dec, NULL, 0, c, b_len, t, T_LEN_MAX, d) != 0) {
+		if (spongewrap_unwrap(*w_dec, NULL, 0, c, b_len, t, T_LEN_MAX, d)
+				!= CONSTR_SUCCESS) {
 			return 1;
 		}
 
@@ -290,12 +294,13 @@ static int testEncDec_empty_b(spongewrap **w_enc, spongewrap **w_dec,
 
 	size_t a_len;
 	for (a_len = 0; a_len <= A_LEN_MAX; a_len++) {
-		if (spongewrap_wrap(*w_enc, a, a_len, NULL, 0, NULL, t, T_LEN_MAX) != 0) {
+		if (spongewrap_wrap(*w_enc, a, a_len, NULL, 0, NULL, t, T_LEN_MAX)
+				!= CONSTR_SUCCESS) {
 			return 1;
 		}
 
 		if (spongewrap_unwrap(*w_dec, a, a_len, NULL, 0, t, T_LEN_MAX,
-					NULL) != 0) {
+					NULL) != CONSTR_SUCCESS) {
 			return 1;
 		}
 	}
@@ -318,12 +323,12 @@ static int testEncDec(spongewrap **w_enc, spongewrap **w_dec,
 	size_t a_len;
 	for (a_len = 0; a_len <= A_LEN_MAX; a_len++) {
 		if (spongewrap_wrap(*w_enc, a, a_len, b, B_LEN_MAX, c, t,
-					T_LEN_MAX) != 0) {
+					T_LEN_MAX) != CONSTR_SUCCESS) {
 			return 1;
 		}
 
 		if (spongewrap_unwrap(*w_dec, a, a_len, c, B_LEN_MAX, t, T_LEN_MAX,
-					d) != 0) {
+					d) != CONSTR_SUCCESS) {
 			return 1;
 		}
 

@@ -29,7 +29,7 @@ typedef struct mcfd_cipher_t mcfd_cipher;
 mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned char *key);
 void mcfd_cipher_free(mcfd_cipher *cipher);
 
-void mcfd_cipher_set_nonce(mcfd_cipher *cipher, const unsigned char *nonce);
+int mcfd_cipher_set_nonce(mcfd_cipher *cipher, const unsigned char *nonce);
 
 int mcfd_cipher_encrypt(mcfd_cipher *cipher, const unsigned char *plaintext,
 		const size_t plaintext_bytes, unsigned char *ciphertext,
