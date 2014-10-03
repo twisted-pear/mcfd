@@ -223,7 +223,10 @@ mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned ch
 	cipher->state = CIPHER_READY;
 	cipher->w = w;
 
-	assert(mcfd_cipher_set_nonce(cipher, init_nonce) == 0);
+	if (mcfd_cipher_set_nonce(cipher, init_nonce) != 0) {
+		assert(0);
+		abort();
+	}
 
 	return cipher;
 

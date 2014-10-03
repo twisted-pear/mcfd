@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <assert.h>
@@ -64,7 +65,10 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	/* Reuse server challenge as initial nonce for dec cipher to ensure that a unique
 	 * key stream is used. */
 	/* TODO: determine whether or not this can create problems. */
-	assert(mcfd_cipher_set_nonce(c_dec, server_challenge) == 0);
+	if (mcfd_cipher_set_nonce(c_dec, server_challenge) != 0) {
+		assert(0);
+		abort();
+	}
 
 	/* TODO: do a timeout here. */
 	/* Receive client reply and check server challenge */
@@ -96,7 +100,10 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	/* Reuse client challenge as initial nonce for enc cipher to ensure that a unique
 	 * key stream is used. */
 	/* TODO: determine whether or not this can create problems. */
-	assert(mcfd_cipher_set_nonce(c_enc, client_challenge) == 0);
+	if (mcfd_cipher_set_nonce(c_enc, client_challenge) != 0) {
+		assert(0);
+		abort();
+	}
 
 	if (send_crypt(crypt_sock, c_enc, (unsigned char *) &auth_msg,
 				sizeof(auth_msg) )!= 0) {
@@ -160,7 +167,10 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	/* Reuse server challenge as initial nonce for enc cipher to ensure that a unique
 	 * key stream is used. */
 	/* TODO: determine whether or not this can create problems. */
-	assert(mcfd_cipher_set_nonce(c_enc, server_challenge) == 0);
+	if (mcfd_cipher_set_nonce(c_enc, server_challenge) != 0) {
+		assert(0);
+		abort();
+	}
 
 	if (send_crypt(crypt_sock, c_enc, (unsigned char *) &auth_msg,
 				sizeof(auth_msg) )!= 0) {
@@ -170,7 +180,10 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	/* Reuse client challenge as initial nonce for dec cipher to ensure that a unique
 	 * key stream is used. */
 	/* TODO: determine whether or not this can create problems. */
-	assert(mcfd_cipher_set_nonce(c_dec, client_challenge) == 0);
+	if (mcfd_cipher_set_nonce(c_dec, client_challenge) != 0) {
+		assert(0);
+		abort();
+	}
 
 	/* Receive server reply and check challenges */
 	/* TODO: do a timeout here. */

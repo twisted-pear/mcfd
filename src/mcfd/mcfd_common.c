@@ -55,7 +55,10 @@ void block_signals(void)
 	sigaddset(&mask, SIGINT);
 	sigaddset(&mask, SIGQUIT);
 
-	assert(sigprocmask(SIG_BLOCK, &mask, NULL) == 0);
+	if (sigprocmask(SIG_BLOCK, &mask, NULL) != 0) {
+		assert(0);
+		abort();
+	}
 }
 
 void unblock_signals(void)
@@ -66,7 +69,10 @@ void unblock_signals(void)
 	sigaddset(&mask, SIGINT);
 	sigaddset(&mask, SIGQUIT);
 
-	assert(sigprocmask(SIG_UNBLOCK, &mask, NULL) == 0);
+	if (sigprocmask(SIG_UNBLOCK, &mask, NULL) != 0) {
+		assert(0);
+		abort();
+	}
 }
 
 void setup_signal_handlers(void)
