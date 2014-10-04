@@ -21,6 +21,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
 	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs")
 endif ()
 
+get_property (H_TEST_UNIT_MAIN GLOBAL PROPERTY H_TEST_UNIT_MAIN)
 get_property (S_TEST_UNIT_MAIN GLOBAL PROPERTY S_TEST_UNIT_MAIN)
 get_property (H_LIBC_WRAPPERS GLOBAL PROPERTY H_LIBC_WRAPPERS)
 get_property (S_LIBC_WRAPPERS GLOBAL PROPERTY S_LIBC_WRAPPERS)
@@ -46,10 +47,12 @@ macro (add_unit_test module_name misc_sources)
 		${_misc_sources}
 		${${_test_name}}
 		${H_LIBC_WRAPPERS} ${S_LIBC_WRAPPERS}
-		${S_TEST_UNIT_MAIN})
+		${H_TEST_UNIT_MAIN} ${S_TEST_UNIT_MAIN})
 	target_link_libraries (${_exe_name} cmocka)
 	set_target_properties (${_exe_name} PROPERTIES LINK_FLAGS
 		"${ALLOC_LINK_FLAGS} ${LIBC_WRAPPERS_LINK_FLAGS}")
+	set_property (TARGET ${_exe_name} APPEND PROPERTY INCLUDE_DIRECTORIES
+		"${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 	add_test (build_${_exe_name} "${CMAKE_COMMAND}" --build
 		${CMAKE_BINARY_DIR} --target ${_exe_name})

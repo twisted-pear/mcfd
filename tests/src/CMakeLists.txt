@@ -6,6 +6,8 @@ set_property (GLOBAL APPEND PROPERTY ALLOC_LINK_FLAGS
 	"-Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=free")
 set_property (GLOBAL APPEND PROPERTY LIBC_WRAPPERS_LINK_FLAGS "")
 
+set_property (GLOBAL APPEND PROPERTY H_TEST_UNIT_MAIN
+	"${CMAKE_CURRENT_SOURCE_DIR}/assert.h")
 set_property (GLOBAL APPEND PROPERTY S_TEST_UNIT_MAIN
 	"${CMAKE_CURRENT_SOURCE_DIR}/test_unit_main.c")
 
