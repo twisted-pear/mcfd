@@ -6,11 +6,6 @@
 #include "duplex.h"
 #include "crypto_helpers.h"
 
-typedef enum {
-	DUPLEX_READY = 0,
-	DUPLEX_BROKEN
-} duplex_state;
-
 duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 {
 	if (f == NULL || p == NULL) {
@@ -47,7 +42,7 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 	dp->rate = rate;
 	dp->max_duplex_rate = rate - p->min_bit_len;
 
-	dp->internal = (void *) DUPLEX_READY;
+	dp->internal = NULL;
 
 	return dp;
 }
@@ -55,9 +50,6 @@ duplex *duplex_init(permutation *f, pad *p, const size_t rate)
 void duplex_free(duplex *dp)
 {
 	assert(dp != NULL);
-
-	/* we don't want broken programs to use the freed duplex */
-	dp->internal = (void *) DUPLEX_BROKEN;
 
 	free(dp);
 }
@@ -68,10 +60,6 @@ constr_result duplex_duplexing(duplex *dp, const unsigned char *input,
 {
 	if (dp == NULL) {
 		return CONSTR_FAILURE;
-	}
-
-	if (dp->internal != DUPLEX_READY) {
-		return CONSTR_FATAL;
 	}
 
 	if ((input == NULL) & (input_bit_len != 0)) {
@@ -91,17 +79,17 @@ constr_result duplex_duplexing(duplex *dp, const unsigned char *input,
 
 	/* Apply padding and add last block. */
 	if (dp->f->xor(dp->f, 0, input, input_bit_len) != 0) {
-		dp->internal = (void *) DUPLEX_BROKEN;
-		return CONSTR_FATAL;
+		assert(0);
+		abort();
 	}
 	if (dp->p->pf(dp->p, dp->f, input_bit_len) != 0) {
-		dp->internal = (void *) DUPLEX_BROKEN;
-		return CONSTR_FATAL;
+		assert(0);
+		abort();
 	}
 
 	if (dp->f->get(dp->f, 0, output, output_bit_len) != 0) {
-		dp->internal = (void *) DUPLEX_BROKEN;
-		return CONSTR_FATAL;
+		assert(0);
+		abort();
 	}
 
 	return CONSTR_SUCCESS;

@@ -722,18 +722,10 @@ static void duplex_duplexing_xor_fail(void **state __attribute__((unused)))
 	expect_value(duplex_duplexing_xor, input_bit_len, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_xor, 1);
 
-	assert_int_equal(duplex_duplexing(dp, inbuf, CREATE_RATE - CREATE_MIN_RATE,
-				outbuf, CREATE_RATE), CONSTR_FATAL);
+	expect_assert_failure(duplex_duplexing(dp, inbuf, CREATE_RATE - CREATE_MIN_RATE,
+				outbuf, CREATE_RATE));
 
 	size_t i;
-	for (i = 0; i < CREATE_RATE / 8; i++) {
-		assert_int_equal(inbuf[i], INBUF_PATTERN);
-		assert_int_equal(outbuf[i], OUTBUF_PATTERN);
-	}
-
-	assert_int_equal(duplex_duplexing(dp, inbuf, CREATE_RATE - CREATE_MIN_RATE,
-				outbuf, CREATE_RATE), CONSTR_FATAL);
-
 	for (i = 0; i < CREATE_RATE / 8; i++) {
 		assert_int_equal(inbuf[i], INBUF_PATTERN);
 		assert_int_equal(outbuf[i], OUTBUF_PATTERN);
@@ -753,18 +745,10 @@ static void duplex_duplexing_pf_fail(void **state __attribute__((unused)))
 	expect_value(duplex_duplexing_pf, remaining_bits, CREATE_RATE - CREATE_MIN_RATE);
 	will_return(duplex_duplexing_pf, 1);
 
-	assert_int_equal(duplex_duplexing(dp, inbuf, CREATE_RATE - CREATE_MIN_RATE,
-				outbuf, CREATE_RATE), CONSTR_FATAL);
+	expect_assert_failure(duplex_duplexing(dp, inbuf, CREATE_RATE - CREATE_MIN_RATE,
+				outbuf, CREATE_RATE));
 
 	size_t i;
-	for (i = 0; i < CREATE_RATE / 8; i++) {
-		assert_int_equal(inbuf[i], INBUF_PATTERN);
-		assert_int_equal(outbuf[i], OUTBUF_PATTERN);
-	}
-
-	assert_int_equal(duplex_duplexing(dp, inbuf, CREATE_RATE - CREATE_MIN_RATE,
-				outbuf, CREATE_RATE), CONSTR_FATAL);
-
 	for (i = 0; i < CREATE_RATE / 8; i++) {
 		assert_int_equal(inbuf[i], INBUF_PATTERN);
 		assert_int_equal(outbuf[i], OUTBUF_PATTERN);
@@ -790,18 +774,10 @@ static void duplex_duplexing_get_fail(void **state __attribute__((unused)))
 	expect_value(duplex_duplexing_get, output_bit_len, CREATE_RATE);
 	will_return(duplex_duplexing_get, 1);
 
-	assert_int_equal(duplex_duplexing(dp, inbuf, CREATE_RATE - CREATE_MIN_RATE,
-				outbuf, CREATE_RATE), CONSTR_FATAL);
+	expect_assert_failure(duplex_duplexing(dp, inbuf, CREATE_RATE - CREATE_MIN_RATE,
+				outbuf, CREATE_RATE));
 
 	size_t i;
-	for (i = 0; i < CREATE_RATE / 8; i++) {
-		assert_int_equal(inbuf[i], INBUF_PATTERN);
-		assert_int_equal(outbuf[i], OUTBUF_PATTERN);
-	}
-
-	assert_int_equal(duplex_duplexing(dp, inbuf, CREATE_RATE - CREATE_MIN_RATE,
-				outbuf, CREATE_RATE), CONSTR_FATAL);
-
 	for (i = 0; i < CREATE_RATE / 8; i++) {
 		assert_int_equal(inbuf[i], INBUF_PATTERN);
 		assert_int_equal(outbuf[i], OUTBUF_PATTERN);

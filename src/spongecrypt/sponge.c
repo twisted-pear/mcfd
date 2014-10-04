@@ -8,7 +8,7 @@
 
 struct internals {
 	size_t remaining_bits;
-	enum { PHASE_ABSORB = 0, PHASE_SQUEEZE, PHASE_BROKEN } phase;
+	enum { PHASE_ABSORB = 0, PHASE_SQUEEZE } phase;
 };
 
 sponge *sponge_init(permutation *f, pad *p, const size_t rate)
@@ -67,10 +67,9 @@ void sponge_free(sponge *sp)
 
 	struct internals *internal = (struct internals *) sp->internal;
 
-	internal->remaining_bits = 0;
-
-	/* we don't want broken programs to use the freed sponge */
-	internal->phase = PHASE_BROKEN;
+	/* we don't want broken programs to absorb into or squeeze the freed sponge */
+	internal->remaining_bits = 1;
+	internal->phase = PHASE_ABSORB;
 
 	free(internal);
 
@@ -86,10 +85,6 @@ constr_result sponge_absorb(sponge *sp, const unsigned char *input,
 
 	struct internals *internal = (struct internals *) sp->internal;
 	assert(internal != NULL);
-
-	if (internal->phase == PHASE_BROKEN) {
-		return CONSTR_FATAL;
-	}
 
 	if (input == NULL) {
 		return CONSTR_FAILURE;
@@ -120,12 +115,12 @@ constr_result sponge_absorb(sponge *sp, const unsigned char *input,
 
 		if (sp->f->xor(sp->f, internal->remaining_bits, in_cur,
 					bits_to_block) != 0) {
-			internal->phase = PHASE_BROKEN;
-			return CONSTR_FATAL;
+			assert(0);
+			abort();
 		}
 		if (sp->f->f(sp->f) != 0) {
-			internal->phase = PHASE_BROKEN;
-			return CONSTR_FATAL;
+			assert(0);
+			abort();
 		}
 
 		internal->remaining_bits = 0;
@@ -139,12 +134,12 @@ constr_result sponge_absorb(sponge *sp, const unsigned char *input,
 		assert(internal->remaining_bits == 0);
 
 		if (sp->f->xor(sp->f, 0, in_cur, sp->rate) != 0) {
-			internal->phase = PHASE_BROKEN;
-			return CONSTR_FATAL;
+			assert(0);
+			abort();
 		}
 		if (sp->f->f(sp->f) != 0) {
-			internal->phase = PHASE_BROKEN;
-			return CONSTR_FATAL;
+			assert(0);
+			abort();
 		}
 
 		in_remaining -= sp->rate;
@@ -153,8 +148,8 @@ constr_result sponge_absorb(sponge *sp, const unsigned char *input,
 
 	/* Xor in the remainder but don't permute yet. */
 	if (sp->f->xor(sp->f, internal->remaining_bits, in_cur, in_remaining) != 0) {
-		internal->phase = PHASE_BROKEN;
-		return CONSTR_FATAL;
+		assert(0);
+		abort();
 	}
 
 	internal->remaining_bits += in_remaining;
@@ -174,10 +169,6 @@ constr_result sponge_absorb_final(sponge *sp)
 	struct internals *internal = (struct internals *) sp->internal;
 	assert(internal != NULL);
 
-	if (internal->phase == PHASE_BROKEN) {
-		return CONSTR_FATAL;
-	}
-
 	/* Only absorb in absorb phase. */
 	if (internal->phase != PHASE_ABSORB) {
 		return CONSTR_FAILURE;
@@ -187,8 +178,8 @@ constr_result sponge_absorb_final(sponge *sp)
 
 	/* Apply padding and permute last block(s). */
 	if (sp->p->pf(sp->p, sp->f, internal->remaining_bits) != 0) {
-		internal->phase = PHASE_BROKEN;
-		return CONSTR_FATAL;
+		assert(0);
+		abort();
 	}
 
 	internal->remaining_bits = sp->rate;
@@ -212,10 +203,6 @@ constr_result sponge_squeeze(sponge *sp, unsigned char *output,
 
 	struct internals *internal = (struct internals *) sp->internal;
 	assert(internal != NULL);
-
-	if (internal->phase == PHASE_BROKEN) {
-		return CONSTR_FATAL;
-	}
 
 	if (output == NULL) {
 		return CONSTR_FAILURE;
@@ -245,11 +232,12 @@ constr_result sponge_squeeze(sponge *sp, unsigned char *output,
 		size_t remaining_start = sp->rate - internal->remaining_bits;
 		if(sp->f->get(sp->f, remaining_start, out_cur,
 					internal->remaining_bits) != 0) {
-			return CONSTR_FAILURE;
+			assert(0);
+			abort();
 		}
 		if (sp->f->f(sp->f) != 0) {
-			internal->phase = PHASE_BROKEN;
-			return CONSTR_FATAL;
+			assert(0);
+			abort();
 		}
 
 		out_remaining -= internal->remaining_bits;
@@ -263,12 +251,12 @@ constr_result sponge_squeeze(sponge *sp, unsigned char *output,
 		assert(internal->remaining_bits == sp->rate);
 
 		if (sp->f->get(sp->f, 0, out_cur, sp->rate) != 0) {
-			internal->phase = PHASE_BROKEN;
-			return CONSTR_FATAL;
+			assert(0);
+			abort();
 		}
 		if (sp->f->f(sp->f) != 0) {
-			internal->phase = PHASE_BROKEN;
-			return CONSTR_FATAL;
+			assert(0);
+			abort();
 		}
 
 		out_remaining -= sp->rate;
@@ -280,8 +268,8 @@ constr_result sponge_squeeze(sponge *sp, unsigned char *output,
 
 	size_t remaining_start = sp->rate - internal->remaining_bits;
 	if (sp->f->get(sp->f, remaining_start, out_cur, out_remaining) != 0) {
-		internal->phase = PHASE_BROKEN;
-		return CONSTR_FATAL;
+		assert(0);
+		abort();
 	}
 
 	internal->remaining_bits -= out_remaining;
