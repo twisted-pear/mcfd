@@ -1,4 +1,4 @@
-rework auth to make sure every side gets to choose the nonce it encrypts with, recheck auth protocol overall
+recheck auth protocol overall
 find asserts that check things which deserve proper error handling
 use gcc 4.9'a ubsan?
 use fuzzer

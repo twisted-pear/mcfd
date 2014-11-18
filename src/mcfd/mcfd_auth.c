@@ -15,6 +15,8 @@
 /* These fields are never explicitly cleared, they don't have to be secret. */
 static unsigned char client_challenge[CHALLENGE_BYTES];
 static unsigned char server_challenge[CHALLENGE_BYTES];
+static unsigned char client_enc_nonce[MCFD_NONCE_BYTES];
+static unsigned char server_enc_nonce[MCFD_NONCE_BYTES];
 
 struct auth_msg_t {
 	unsigned char challenge1[CHALLENGE_BYTES];
@@ -52,6 +54,15 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 		return 1;
 	}
 
+	/* Create server encryption nonce */
+	if (mcfd_get_random(server_enc_nonce, MCFD_NONCE_BYTES) != 0) {
+		return 1;
+	}
+	if (mcfd_cipher_set_nonce(c_enc, server_enc_nonce) != 0) {
+		assert(0);
+		abort();
+	}
+
 	/* Create server challenge */
 	if (mcfd_get_random(server_challenge, CHALLENGE_BYTES) != 0) {
 		return 1;
@@ -62,16 +73,18 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 		return 1;
 	}
 
-	/* Reuse server challenge as initial nonce for dec cipher to ensure that a unique
-	 * key stream is used. */
-	/* TODO: determine whether or not this can create problems. */
-	if (mcfd_cipher_set_nonce(c_dec, server_challenge) != 0) {
+	/* Receive nonce from client */
+	/* TODO: do a timeout here. */
+	if (net_recv(crypt_sock, client_enc_nonce, MCFD_NONCE_BYTES) != 0) {
+		return 1;
+	}
+	if (mcfd_cipher_set_nonce(c_dec, client_enc_nonce) != 0) {
 		assert(0);
 		abort();
 	}
 
-	/* TODO: do a timeout here. */
 	/* Receive client reply and check server challenge */
+	/* TODO: do a timeout here. */
 	if (recv_crypt(crypt_sock, c_dec, (unsigned char *) &auth_msg,
 				sizeof(auth_msg)) != 0) {
 		return 1;
@@ -89,7 +102,6 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	memcpy(nonce_dec + (MCFD_NONCE_BYTES / 2), auth_msg.half_nonce2,
 			MCFD_NONCE_BYTES / 2);
 
-	/* Encrypt challenges and send to client */
 	memcpy(client_challenge, auth_msg.challenge1, CHALLENGE_BYTES);
 	memcpy(auth_msg.challenge1, server_challenge, CHALLENGE_BYTES);
 	memcpy(auth_msg.challenge2, client_challenge, CHALLENGE_BYTES);
@@ -97,14 +109,11 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	memcpy(auth_msg.half_nonce1, nonce_enc, MCFD_NONCE_BYTES / 2);
 	memcpy(auth_msg.half_nonce2, nonce_dec, MCFD_NONCE_BYTES / 2);
 
-	/* Reuse client challenge as initial nonce for enc cipher to ensure that a unique
-	 * key stream is used. */
-	/* TODO: determine whether or not this can create problems. */
-	if (mcfd_cipher_set_nonce(c_enc, client_challenge) != 0) {
-		assert(0);
-		abort();
+	if (net_send(crypt_sock, server_enc_nonce, MCFD_NONCE_BYTES) != 0) {
+		return 1;
 	}
 
+	/* Encrypt challenges and send to client */
 	if (send_crypt(crypt_sock, c_enc, (unsigned char *) &auth_msg,
 				sizeof(auth_msg) )!= 0) {
 		return 1;
@@ -144,6 +153,15 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 		return 1;
 	}
 
+	/* Create client encryption nonce */
+	if (mcfd_get_random(client_enc_nonce, MCFD_NONCE_BYTES) != 0) {
+		return 1;
+	}
+	if (mcfd_cipher_set_nonce(c_enc, client_enc_nonce) != 0) {
+		assert(0);
+		abort();
+	}
+
 	/* Create client callenge */
 	if (mcfd_get_random(client_challenge, CHALLENGE_BYTES) != 0) {
 		return 1;
@@ -155,7 +173,6 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 		return 1;
 	}
 
-	/* Encrypt challenges and send to server */
 	memcpy(auth_msg.challenge1, client_challenge, CHALLENGE_BYTES);
 	memcpy(auth_msg.challenge2, server_challenge, CHALLENGE_BYTES);
 	memcpy(auth_msg.half_key, key + MCFD_KEY_BYTES / 2, MCFD_KEY_BYTES / 2);
@@ -164,23 +181,22 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	memcpy(auth_msg.half_nonce1, nonce_dec + MCFD_NONCE_BYTES / 2,
 			MCFD_NONCE_BYTES / 2);
 
-	/* Reuse server challenge as initial nonce for enc cipher to ensure that a unique
-	 * key stream is used. */
-	/* TODO: determine whether or not this can create problems. */
-	if (mcfd_cipher_set_nonce(c_enc, server_challenge) != 0) {
-		assert(0);
-		abort();
+	if (net_send(crypt_sock, client_enc_nonce, MCFD_NONCE_BYTES) != 0) {
+		return 1;
 	}
 
+	/* Encrypt challenges and send to server */
 	if (send_crypt(crypt_sock, c_enc, (unsigned char *) &auth_msg,
 				sizeof(auth_msg) )!= 0) {
 		return 1;
 	}
 
-	/* Reuse client challenge as initial nonce for dec cipher to ensure that a unique
-	 * key stream is used. */
-	/* TODO: determine whether or not this can create problems. */
-	if (mcfd_cipher_set_nonce(c_dec, client_challenge) != 0) {
+	/* Receive nonce from server */
+	/* TODO: do a timeout here. */
+	if (net_recv(crypt_sock, server_enc_nonce, MCFD_NONCE_BYTES) != 0) {
+		return 1;
+	}
+	if (mcfd_cipher_set_nonce(c_dec, server_enc_nonce) != 0) {
 		assert(0);
 		abort();
 	}
