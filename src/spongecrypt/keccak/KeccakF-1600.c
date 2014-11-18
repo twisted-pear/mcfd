@@ -169,9 +169,8 @@ static void iota(uint64_t *state, int round)
 	state[IDX(0,0)] ^= round_constants[round];
 }
 
-static void permute(permutation *p, unsigned char *state)
+static void permute(unsigned char *state)
 {
-	assert(p != NULL);
 	assert(state != NULL);
 
 	uint64_t *state_as_lanes = (uint64_t *) state;
@@ -194,7 +193,7 @@ static int f(permutation *p)
 
 	assert(p->internal != NULL);
 
-	permute(p, p->internal);
+	permute(p->internal);
 
 	return 0;
 }
