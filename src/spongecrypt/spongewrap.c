@@ -375,9 +375,8 @@ constr_result spongewrap_unwrap(spongewrap *w, const unsigned char *a,
 		b[i] &= mask;
 	}
 
-	/* TODO: do this statically */
-	assert(STATE_BROKEN <= UCHAR_MAX);
-	assert(CONSTR_FATAL <= UCHAR_MAX);
+	static_assert(STATE_BROKEN <= UCHAR_MAX, "STATE_BROKEN too large");
+	static_assert(CONSTR_FATAL <= UCHAR_MAX, "CONSTR_FATAL too large");
 
 	internal->state = STATE_BROKEN & ~mask;
 

@@ -27,6 +27,8 @@ struct auth_msg_t {
 } __attribute__((packed));
 
 static struct auth_msg_t auth_msg;
+static_assert(MCFD_NET_CRYPT_BUF_SIZE >= sizeof(auth_msg),
+		"MCFD_NET_CRYPT_BUF_SIZE too small");
 
 /* You must not use key or nonces unless this function returns 0. */
 int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,

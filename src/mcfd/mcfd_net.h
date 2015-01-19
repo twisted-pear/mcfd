@@ -8,6 +8,9 @@ void clear_buffers(void);
 int net_send(int sock, const unsigned char *outbuf, const size_t outbuf_size);
 int net_recv(int sock, unsigned char *inbuf, const size_t inbuf_size);
 
+/* The maximum number of bytes send_crypt()/recv_crypt() can send/receive. */
+#define MCFD_NET_CRYPT_BUF_SIZE 1024
+
 int send_crypt(int crypt_sock, mcfd_cipher *c_enc, const unsigned char *outbuf,
 		const size_t outbuf_size);
 int recv_crypt(int crypt_sock, mcfd_cipher *c_dec, unsigned char *inbuf,

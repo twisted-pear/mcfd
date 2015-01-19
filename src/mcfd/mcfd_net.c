@@ -15,6 +15,7 @@
 #include "crypto_helpers.h"
 
 #define DGRAM_DATA_SIZE (((MCFD_BLOCK_SIZE / 8) * 8) - sizeof(unsigned short))
+static_assert(DGRAM_DATA_SIZE <= SSIZE_MAX, "DGRAM_DATA_SIZE too large");
 
 struct dgram_t {
 	unsigned short size;
@@ -25,9 +26,10 @@ static struct dgram_t dgram;
 
 #define CRYPT_SIZE (sizeof(dgram) + MCFD_TAG_BYTES)
 
-/* Make sure this is at least >= CRYPT_SIZE, large enough for mcfd_auth and
- * <= SSIZE_MAX. */
-#define BUF_SIZE 1200
+#define BUF_SIZE (MCFD_NET_CRYPT_BUF_SIZE + MCFD_TAG_BYTES)
+static_assert(BUF_SIZE >= CRYPT_SIZE, "BUF_SIZE too small");
+static_assert(BUF_SIZE <= SSIZE_MAX, "BUF_SIZE too large");
+
 static unsigned char buf[BUF_SIZE];
 
 void clear_buffers(void)
@@ -130,12 +132,13 @@ static int _send_crypt(int crypt_sock, mcfd_cipher *c_enc, const unsigned char *
 	assert(crypt_sock != -1);
 	assert(c_enc != NULL);
 	assert(outbuf != NULL);
-	assert((BUF_SIZE >= CRYPT_SIZE) & (BUF_SIZE <= SSIZE_MAX));
 
 	if (outbuf_size > (size_t) (BUF_SIZE - MCFD_TAG_BYTES)) {
 		print_err("send crypt", "too much data");
 		return -1;
 	}
+
+	assert(outbuf_size + MCFD_TAG_BYTES <= CRYPT_SIZE);
 
 	if (mcfd_cipher_encrypt(c_enc, outbuf, outbuf_size, buf,
 				buf + outbuf_size) != 0) {
@@ -164,12 +167,13 @@ static int _recv_crypt(int crypt_sock, mcfd_cipher *c_dec, unsigned char *inbuf,
 	assert(crypt_sock != -1);
 	assert(c_dec != NULL);
 	assert(inbuf != NULL);
-	assert((BUF_SIZE >= CRYPT_SIZE) & (BUF_SIZE <= SSIZE_MAX));
 
 	if (inbuf_size > (size_t) (BUF_SIZE - MCFD_TAG_BYTES)) {
 		print_err("recv crypt", "too much data");
 		return -1;
 	}
+
+	assert(inbuf_size + MCFD_TAG_BYTES <= CRYPT_SIZE);
 
 	int ret = net_recv(crypt_sock, buf, inbuf_size + MCFD_TAG_BYTES);
 	if (ret != 0) {
@@ -201,7 +205,6 @@ int crypt_to_plain(int crypt_sock, int plain_sock, mcfd_cipher *c_dec)
 	assert(crypt_sock != -1);
 	assert(plain_sock != -1);
 	assert(c_dec != NULL);
-	assert((BUF_SIZE >= CRYPT_SIZE) & (BUF_SIZE <= SSIZE_MAX));
 
 	int ret = _recv_crypt(crypt_sock, c_dec, (unsigned char *) &dgram, sizeof(dgram));
 	if (ret != 0) {
@@ -232,8 +235,6 @@ int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc)
 	assert(plain_sock != -1);
 	assert(crypt_sock != -1);
 	assert(c_enc != NULL);
-	assert((BUF_SIZE >= CRYPT_SIZE) & (BUF_SIZE <= SSIZE_MAX));
-	assert(DGRAM_DATA_SIZE <= SSIZE_MAX);
 
 	int ret = -1;
 
