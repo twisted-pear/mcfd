@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include <assert.h>
@@ -28,6 +29,8 @@ static unsigned char key[MCFD_KEY_BYTES];
 static unsigned char nonce_enc[MCFD_NONCE_BYTES];
 static unsigned char nonce_dec[MCFD_NONCE_BYTES];
 
+static struct termios *term_old = NULL;
+
 void cleanup(void)
 {
 	explicit_bzero(key, MCFD_KEY_BYTES);
@@ -45,6 +48,10 @@ void cleanup(void)
 	}
 
 	clear_buffers();
+
+	if (term_old != NULL) {
+		(void) tcsetattr(STDIN_FILENO, TCSANOW, term_old);
+	}
 
 	if (listen_sock != -1) {
 		close(listen_sock);
@@ -65,7 +72,7 @@ void cleanup(void)
 __attribute__((noreturn))
 static void usage(void)
 {
-	fprintf(stderr, "Usage: %s [-f] [-s] [-l <listen_addr>] -k <key> <listen_port> "
+	fprintf(stderr, "Usage: %s [-f] [-s] [-l <listen_addr>] [-k <key>] <listen_port> "
 			"<dst_addr> <dst_port>\n", progname);
 	terminate(EXIT_FAILURE);
 }
@@ -216,6 +223,86 @@ static void handle_connection(const char *dst_addr, const char *dst_port,
 	assert(0);
 }
 
+#define PASS_BUF_LEN 64
+
+static char *read_password(void)
+{
+	static char pass_buf[PASS_BUF_LEN];
+
+	static struct termios old;
+	struct termios new;
+
+	char *ret = NULL;
+
+	if (tcgetattr(STDIN_FILENO, &old) != 0) {
+		print_err("read password", strerror(errno));
+		return NULL;
+	}
+
+	new = old;
+	new.c_lflag &= ~ECHO;
+
+	block_signals();
+	term_old = &old;
+	unblock_signals();
+
+	if (tcsetattr(STDIN_FILENO, TCSANOW, &new) != 0) {
+		goto err_msg;
+	}
+
+	printf("Enter password: ");
+
+	ret = fgets(pass_buf, PASS_BUF_LEN, stdin);
+	if (ret == NULL) {
+		goto err_msg;
+	}
+
+	printf("\n");
+
+	size_t pass_len = strlen(pass_buf);
+
+	if (pass_len == 0 || pass_buf[0] == '\n') {
+		print_err("read password", "no password given");
+		goto err;
+	}
+
+	assert(pass_len > 0);
+
+	/* fgets might store a newline at the end, remove it */
+	if (pass_buf[pass_len - 1] == '\n') {
+		assert(pass_len > 1);
+
+		pass_buf[pass_len - 1] = '\0';
+	}
+
+	assert(ret != NULL);
+
+	goto out;
+
+err_msg:
+	print_err("read password", strerror(errno));
+
+err:
+	ret = NULL;
+
+	explicit_bzero(pass_buf, PASS_BUF_LEN);
+
+out:
+	assert(term_old != NULL);
+
+	if (tcsetattr(STDIN_FILENO, TCSANOW, &old) != 0 && ret != NULL) {
+		explicit_bzero(pass_buf, PASS_BUF_LEN);
+		print_err("read password", strerror(errno));
+		ret = NULL;
+	}
+
+	block_signals();
+	term_old = NULL;
+	unblock_signals();
+
+	return ret;
+}
+
 /* TODO: add more meaningful output */
 int main(int argc, char *const *argv)
 {
@@ -278,7 +365,7 @@ int main(int argc, char *const *argv)
 
 	assert(pass != NULL || pass_len == 0);
 
-	if (optind != argc - 3 || pass_len == 0) {
+	if (optind != argc - 3) {
 		usage();
 	}
 
@@ -294,6 +381,17 @@ int main(int argc, char *const *argv)
 	char *dst_port = argv[optind + 2];
 
 	setup_signal_handlers();
+
+	if (pass_len == 0) {
+		pass = read_password();
+		if (pass == NULL) {
+			terminate(EXIT_FAILURE);
+		}
+
+		pass_len = strlen(pass);
+	}
+
+	assert(pass != NULL && pass_len > 0);
 
 	/* TODO: Is this really necessary? */
 	/* Disable signals here to make sure the key is correctly destroyed again. */
