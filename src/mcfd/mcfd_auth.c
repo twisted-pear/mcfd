@@ -10,7 +10,7 @@
 #include "mcfd_crypto.h"
 #include "mcfd_net.h"
 
-#define CHALLENGE_BYTES MCFD_NONCE_BYTES
+#define CHALLENGE_BYTES MCFD_TAG_BYTES
 
 /* These fields are never explicitly cleared, they don't have to be secret. */
 static unsigned char client_challenge[CHALLENGE_BYTES];
@@ -38,10 +38,6 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	assert(key != NULL);
 	assert(nonce_enc != NULL);
 	assert(nonce_dec != NULL);
-
-	/* This is required because we reuse the challenges as nonces. */
-	assert(sizeof(server_challenge) == MCFD_NONCE_BYTES);
-	assert(sizeof(client_challenge) == MCFD_NONCE_BYTES);
 
 	/* Create first halves of new key and nonces. */
 	if (mcfd_get_random(key, MCFD_KEY_BYTES / 2) != 0) {
@@ -135,10 +131,6 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	assert(key != NULL);
 	assert(nonce_enc != NULL);
 	assert(nonce_dec != NULL);
-
-	/* This is required because we reuse the challenges as nonces. */
-	assert(sizeof(server_challenge) == MCFD_NONCE_BYTES);
-	assert(sizeof(client_challenge) == MCFD_NONCE_BYTES);
 
 	/* Create second halves of new key and nonces. */
 	if (mcfd_get_random(key + MCFD_KEY_BYTES / 2, MCFD_KEY_BYTES / 2) != 0) {
