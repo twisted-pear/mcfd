@@ -2,6 +2,7 @@
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdnoreturn.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <termios.h>
@@ -69,8 +70,7 @@ void cleanup(void)
 	}
 }
 
-__attribute__((noreturn))
-static void usage(void)
+noreturn static void usage(void)
 {
 	fprintf(stderr, "Usage: %s [-f] [-s] [-l <listen_addr>] [-k <key>] <listen_port> "
 			"<dst_addr> <dst_port>\n", progname);
@@ -82,8 +82,7 @@ enum op_mode {
 	MODE_SERVER
 };
 
-__attribute__((noreturn))
-static void handle_connection(const char *dst_addr, const char *dst_port,
+noreturn static void handle_connection(const char *dst_addr, const char *dst_port,
 		const enum op_mode mode)
 {
 	assert(client_sock != -1);
