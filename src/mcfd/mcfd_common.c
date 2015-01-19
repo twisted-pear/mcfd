@@ -31,7 +31,7 @@ void print_buf(const unsigned char *buf, size_t len)
 
 void print_err(const char *const action, const char *const reason)
 {
-	(void)fprintf(stderr, "%s [ERROR] %s: %s\n", progname, action, reason);
+	(void) fprintf(stderr, "%s [ERROR] %s: %s\n", progname, action, reason);
 }
 
 static void handle_signal(int signal __attribute__((unused)))
