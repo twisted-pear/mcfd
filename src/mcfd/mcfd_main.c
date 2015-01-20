@@ -305,7 +305,7 @@ out:
 /* TODO: add more meaningful output */
 int main(int argc, char *const *argv)
 {
-	if (argc < 6 || argc > 10) {
+	if (argc < 4 || argc > 10) {
 		usage();
 	}
 
