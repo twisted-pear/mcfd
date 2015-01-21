@@ -15,6 +15,7 @@
 #include "mcfd_common.h"
 #include "mcfd_crypto.h"
 #include "mcfd_net.h"
+#include "mcfd_random.h"
 
 static mcfd_cipher *c_enc = NULL;
 static mcfd_cipher *c_dec = NULL;
@@ -47,6 +48,8 @@ void cleanup(void)
 		mcfd_cipher_free(c_dec);
 		c_dec = NULL;
 	}
+
+	mcfd_random_destroy();
 
 	clear_buffers();
 
@@ -448,6 +451,11 @@ int main(int argc, char *const *argv)
 		terminate(EXIT_FAILURE);
 	}
 
+	if (mcfd_random_init() != 0) {
+		print_err("init RNG", "failed to init RNG");
+		terminate(EXIT_FAILURE);
+	}
+
 	listen_sock = create_listen_socket(&listen_sock, listen_addr, listen_port);
 	if (listen_sock == -1) {
 		terminate(EXIT_FAILURE);
@@ -470,6 +478,11 @@ int main(int argc, char *const *argv)
 
 		if (do_fork) {
 			pid = fork();
+		}
+
+		if (mcfd_random_reseed() != 0) {
+			print_err("reseed RNG", "failed to reseed RNG");
+			terminate(EXIT_FAILURE);
 		}
 
 		if (pid == 0) {

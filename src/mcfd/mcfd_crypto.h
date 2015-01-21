@@ -19,8 +19,6 @@
 
 #include <stdint.h>
 
-int mcfd_get_random(unsigned char *outbuf, const size_t outbuf_size);
-
 int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 		const size_t iterations, unsigned char *key);
 

@@ -9,6 +9,7 @@
 #include "mcfd_common.h"
 #include "mcfd_crypto.h"
 #include "mcfd_net.h"
+#include "mcfd_random.h"
 
 #define CHALLENGE_BYTES MCFD_TAG_BYTES
 
@@ -30,6 +31,10 @@ static struct auth_msg_t auth_msg;
 static_assert(MCFD_NET_CRYPT_BUF_SIZE >= sizeof(auth_msg),
 		"MCFD_NET_CRYPT_BUF_SIZE too small");
 
+static_assert(MCFD_RANDOM_MAX >= ((MCFD_KEY_BYTES / 2) + (MCFD_NONCE_BYTES / 2) +
+			(MCFD_NONCE_BYTES / 2) + MCFD_NONCE_BYTES + CHALLENGE_BYTES),
+		"MCFD_RANDOM_MAX too small");
+
 /* You must not use key or nonces unless this function returns 0. */
 int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 		unsigned char *key, unsigned char *nonce_enc, unsigned char *nonce_dec)
@@ -42,18 +47,18 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	assert(nonce_dec != NULL);
 
 	/* Create first halves of new key and nonces. */
-	if (mcfd_get_random(key, MCFD_KEY_BYTES / 2) != 0) {
+	if (mcfd_random_get(key, MCFD_KEY_BYTES / 2) != 0) {
 		return 1;
 	}
-	if (mcfd_get_random(nonce_enc, MCFD_NONCE_BYTES / 2) != 0) {
+	if (mcfd_random_get(nonce_enc, MCFD_NONCE_BYTES / 2) != 0) {
 		return 1;
 	}
-	if (mcfd_get_random(nonce_dec, MCFD_NONCE_BYTES / 2) != 0) {
+	if (mcfd_random_get(nonce_dec, MCFD_NONCE_BYTES / 2) != 0) {
 		return 1;
 	}
 
 	/* Create server encryption nonce */
-	if (mcfd_get_random(server_enc_nonce, MCFD_NONCE_BYTES) != 0) {
+	if (mcfd_random_get(server_enc_nonce, MCFD_NONCE_BYTES) != 0) {
 		return 1;
 	}
 	if (mcfd_cipher_set_nonce(c_enc, server_enc_nonce) != 0) {
@@ -62,7 +67,7 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	}
 
 	/* Create server challenge */
-	if (mcfd_get_random(server_challenge, CHALLENGE_BYTES) != 0) {
+	if (mcfd_random_get(server_challenge, CHALLENGE_BYTES) != 0) {
 		return 1;
 	}
 
@@ -135,20 +140,20 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	assert(nonce_dec != NULL);
 
 	/* Create second halves of new key and nonces. */
-	if (mcfd_get_random(key + MCFD_KEY_BYTES / 2, MCFD_KEY_BYTES / 2) != 0) {
+	if (mcfd_random_get(key + MCFD_KEY_BYTES / 2, MCFD_KEY_BYTES / 2) != 0) {
 		return 1;
 	}
-	if (mcfd_get_random(nonce_enc + MCFD_NONCE_BYTES / 2,
+	if (mcfd_random_get(nonce_enc + MCFD_NONCE_BYTES / 2,
 				MCFD_NONCE_BYTES / 2) != 0) {
 		return 1;
 	}
-	if (mcfd_get_random(nonce_dec + MCFD_NONCE_BYTES / 2,
+	if (mcfd_random_get(nonce_dec + MCFD_NONCE_BYTES / 2,
 				MCFD_NONCE_BYTES / 2) != 0) {
 		return 1;
 	}
 
 	/* Create client encryption nonce */
-	if (mcfd_get_random(client_enc_nonce, MCFD_NONCE_BYTES) != 0) {
+	if (mcfd_random_get(client_enc_nonce, MCFD_NONCE_BYTES) != 0) {
 		return 1;
 	}
 	if (mcfd_cipher_set_nonce(c_enc, client_enc_nonce) != 0) {
@@ -157,7 +162,7 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 	}
 
 	/* Create client callenge */
-	if (mcfd_get_random(client_challenge, CHALLENGE_BYTES) != 0) {
+	if (mcfd_random_get(client_challenge, CHALLENGE_BYTES) != 0) {
 		return 1;
 	}
 
