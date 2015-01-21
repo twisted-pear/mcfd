@@ -222,19 +222,18 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 	assert(0);
 }
 
-#define PASS_BUF_LEN 64
-
-static char *read_password(void)
+static char *read_password_tty(char *buf, size_t len, int fd)
 {
-	static char pass_buf[PASS_BUF_LEN];
+	assert(buf != NULL);
+	assert(len > 0);
+	assert(isatty(fd));
 
 	static struct termios old;
 	struct termios new;
 
 	char *ret = NULL;
 
-	if (tcgetattr(STDIN_FILENO, &old) != 0) {
-		print_err("read password", strerror(errno));
+	if (tcgetattr(fd, &old) != 0) {
 		return NULL;
 	}
 
@@ -245,18 +244,55 @@ static char *read_password(void)
 	term_old = &old;
 	unblock_signals();
 
-	if (tcsetattr(STDIN_FILENO, TCSANOW, &new) != 0) {
-		goto err_msg;
+	if (tcsetattr(fd, TCSANOW, &new) != 0) {
+		goto out;
 	}
 
 	printf("Enter password: ");
 
-	ret = fgets(pass_buf, PASS_BUF_LEN, stdin);
+	ret = fgets(buf, len, stdin);
+
+	printf("\n");
+
+out:
+	assert(term_old != NULL);
+
+	if (tcsetattr(fd, TCSANOW, &old) != 0) {
+		ret = NULL;
+	}
+
+	block_signals();
+	term_old = NULL;
+	unblock_signals();
+
+	return ret;
+}
+
+#define PASS_BUF_LEN 64
+static char pass_buf[PASS_BUF_LEN];
+
+static char *read_password(void)
+{
+	char *ret;
+	int errno_backup = errno;
+
+	if (isatty(STDIN_FILENO)) {
+		ret = read_password_tty(pass_buf, PASS_BUF_LEN, STDIN_FILENO);
+	} else {
+		if (errno != EINVAL && errno != ENOTTY) {
+			goto err_msg;
+		}
+
+		errno = errno_backup;
+
+		ret = fgets(pass_buf, PASS_BUF_LEN, stdin);
+	}
+
 	if (ret == NULL) {
 		goto err_msg;
 	}
 
-	printf("\n");
+	assert(ret == pass_buf);
 
 	size_t pass_len = strlen(pass_buf);
 
@@ -274,7 +310,7 @@ static char *read_password(void)
 		pass_buf[pass_len - 1] = '\0';
 	}
 
-	assert(ret != NULL);
+	assert(ret == pass_buf);
 
 	goto out;
 
@@ -287,18 +323,6 @@ err:
 	explicit_bzero(pass_buf, PASS_BUF_LEN);
 
 out:
-	assert(term_old != NULL);
-
-	if (tcsetattr(STDIN_FILENO, TCSANOW, &old) != 0 && ret != NULL) {
-		explicit_bzero(pass_buf, PASS_BUF_LEN);
-		print_err("read password", strerror(errno));
-		ret = NULL;
-	}
-
-	block_signals();
-	term_old = NULL;
-	unblock_signals();
-
 	return ret;
 }
 
