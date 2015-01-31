@@ -117,7 +117,7 @@ void setup_signal_handlers(void)
 }
 
 /* This function shamelessly stolen from https://stackoverflow.com/questions/2602823/. */
-unsigned char reverse_bits(unsigned char b)
+static unsigned char reverse_bits(unsigned char b)
 {
 	b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
 	b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
