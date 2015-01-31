@@ -350,70 +350,53 @@ int net_connect(struct addrinfo *gai_result)
 	return -1;
 }
 
-int create_listen_socket(int *sock, const char *addr, const char *port)
+int create_listen_socket(const char *addr, const char *port)
 {
-	assert(sock != NULL);
 	assert(port != NULL);
 
-	*sock = -1;
+	int sock = -1;
 
-	struct addrinfo hints; /* What kind of socket do we want? */
-	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = AI_PASSIVE;
-	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_canonname = NULL;
-	hints.ai_addr = NULL;
-	hints.ai_next = NULL;
-
-	/* The result of getaddrinfo. Do not modify this, we need to free it later. */
-	struct addrinfo *result = NULL;
-
-	int err = getaddrinfo(addr, port, &hints, &result);
-	if (err != 0) {
-		/* Can getaddrinfo fail, while still allocating space? */
-		if (result != NULL) {
-			freeaddrinfo(result);
-		}
-
-		print_err("getaddrinfo", gai_strerror(err));
-
+	struct addrinfo *res_result = _net_resolve(addr, port, AI_PASSIVE);
+	if (res_result == NULL) {
 		return -1;
 	}
 
 	struct addrinfo *rp = NULL;
-	for (rp = result; rp != NULL; rp = rp->ai_next) {
-		*sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-		if (*sock == -1) {
+	for (rp = res_result; rp != NULL; rp = rp->ai_next) {
+		sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+		if (sock == -1) {
+			print_err("socket", strerror(errno));
 			continue;
 		}
 
 		int reuse = 1; /* TIME_WAIT assassination */
-		if (setsockopt (*sock, SOL_SOCKET, SO_REUSEADDR, &reuse,
+		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse,
 					sizeof(reuse)) != 0) {
 			print_err("setsockopt", strerror(errno));
 			/* We really don't care if this was successful or not,
 			 * so we continue. */
 		}
 
-		if (bind(*sock, rp->ai_addr, rp->ai_addrlen) == 0) {
-			if (listen(*sock, 0) == 0) {
-				freeaddrinfo(result);
-				assert(*sock != -1);
-				return *sock;
+		if (bind(sock, rp->ai_addr, rp->ai_addrlen) == 0) {
+			if (listen(sock, 0) == 0) {
+				freeaddrinfo(res_result);
+				assert(sock != -1);
+				return sock;
 			}
+
+			print_err("listen", strerror(errno));
+		} else {
+			print_err("bind", strerror(errno));
 		}
 
-		close(*sock);
-		*sock = -1;
+		close(sock);
+		sock = -1;
 	}
 
-	/* Free the result-list of getaddrinfo */
-	freeaddrinfo(result);
+	freeaddrinfo(res_result);
 
 	print_err("create_listen_socket", "Could not bind");
-	assert(*sock == -1);
+	assert(sock == -1);
 
 	return -1;
 }

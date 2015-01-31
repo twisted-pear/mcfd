@@ -464,7 +464,7 @@ int main(int argc, char *const *argv)
 		terminate(EXIT_FAILURE);
 	}
 
-	listen_sock = create_listen_socket(&listen_sock, listen_addr, listen_port);
+	listen_sock = create_listen_socket(listen_addr, listen_port);
 	if (listen_sock == -1) {
 		terminate(EXIT_FAILURE);
 	}
