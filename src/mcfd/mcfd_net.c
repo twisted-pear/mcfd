@@ -16,6 +16,7 @@
 
 #define DGRAM_DATA_SIZE (((MCFD_BLOCK_SIZE / 8) * 8) - sizeof(unsigned short))
 static_assert(DGRAM_DATA_SIZE <= SSIZE_MAX, "DGRAM_DATA_SIZE too large");
+static_assert(DGRAM_DATA_SIZE < USHRT_MAX, "DGRAM_DATA_SIZE too large");
 
 struct dgram_t {
 	unsigned short size;
