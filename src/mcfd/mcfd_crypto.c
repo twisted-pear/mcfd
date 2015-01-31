@@ -14,9 +14,11 @@
 #include <keccak/KeccakF-1600.h>
 #include <keccak/KeccakPad_10_1.h>
 
-#define SPONGEWRAP_RATE (MCFD_BLOCK_SIZE \
-		+ KECCAKPAD_10_1_MIN_BIT_LEN \
-		+ 1 /* for spongewrap's frame bit */)
+#define SPONGEWRAP_RATE 1024
+static_assert(MCFD_BLOCK_SIZE + KECCAKPAD_10_1_MIN_BIT_LEN
+		+ 1 /* for spongewrap's frame bit */ <= SPONGEWRAP_RATE,
+		"SPONGEWRAP_RATE too small");
+
 #define KDF_RATE 576
 
 struct mcfd_cipher_t {

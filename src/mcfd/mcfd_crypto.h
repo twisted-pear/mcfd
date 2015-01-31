@@ -1,7 +1,7 @@
 #ifndef __MCFD_CRYPTO_H__
 #define __MCFD_CRYPTO_H__
 
-#define MCFD_BLOCK_SIZE 1024
+#define MCFD_BLOCK_SIZE 1016
 
 #define MCFD_KEY_BITS 256
 #define MCFD_KEY_BYTES (MCFD_KEY_BITS / 8)
