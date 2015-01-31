@@ -34,9 +34,33 @@ void print_err(const char *const action, const char *const reason)
 	(void) fprintf(stderr, "%s [ERROR] %s: %s\n", progname, action, reason);
 }
 
-static void handle_signal(int signal __attribute__((unused)))
+static volatile sig_atomic_t handling_signal = 0;
+static void handle_signal(int signal)
 {
-	terminate(EXIT_SUCCESS);
+	if (handling_signal != 0) {
+		raise(signal);
+
+		assert(0);
+		abort();
+	}
+	handling_signal = 1;
+
+	cleanup();
+
+	/* Restore original signal behaviour for correct exit code. */
+	sigset_t mask;
+	sigemptyset(&mask);
+	struct sigaction act;
+	act.sa_handler = SIG_DFL;
+	act.sa_mask = mask;
+	act.sa_flags = 0;
+	if (sigaction(signal, &act, NULL) < 0) {
+		terminate(EXIT_FAILURE);
+	}
+
+	/* Execute the default signal handler.
+	 * The signal will be delivered immediately after the handler exits. */
+	raise(signal);
 }
 
 static void handle_child(int signal __attribute__((unused)))
@@ -79,16 +103,11 @@ void setup_signal_handlers(void)
 {
 	sigset_t mask;
 	sigemptyset(&mask);
-	sigaddset(&mask, SIGTERM);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGQUIT);
-	sigaddset(&mask, SIGCHLD);
 
 	struct sigaction act;
 	act.sa_handler = handle_signal;
 	act.sa_mask = mask;
 	act.sa_flags = 0;
-	act.sa_restorer = NULL;
 
 	if (sigaction(SIGTERM, &act, NULL) < 0) {
 		print_err("set SIGTERM signal handler", strerror(errno));
@@ -105,10 +124,14 @@ void setup_signal_handlers(void)
 		terminate(EXIT_FAILURE);
 	}
 
+	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGQUIT);
+	sigaddset(&mask, SIGCHLD);
+
 	act.sa_handler = handle_child;
 	act.sa_mask = mask;
 	act.sa_flags = 0;
-	act.sa_restorer = NULL;
 
 	if (sigaction(SIGCHLD, &act, NULL) < 0) {
 		print_err("set SIGCHLD signal handler", strerror(errno));
