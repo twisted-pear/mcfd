@@ -276,18 +276,15 @@ out:
 	return ret;
 }
 
-int connect_to_server(int *sock, const char *addr, const char *port)
+static struct addrinfo *_net_resolve(const char *addr, const char *port, int flags)
 {
-	assert(sock != NULL);
 	assert(port != NULL);
 
-	*sock = -1;
-
-	struct addrinfo hints; /* Where do we want to connect to? */
+	struct addrinfo hints; /* What kind of socket do we want? */
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = 0;
+	hints.ai_flags = flags;
 	hints.ai_protocol = IPPROTO_TCP;
 
 	/* The result of getaddrinfo. Do not modify this, we need to free it later. */
@@ -302,31 +299,53 @@ int connect_to_server(int *sock, const char *addr, const char *port)
 
 		print_err("getaddrinfo", gai_strerror(err));
 
-		return -1;
+		return NULL;
 	}
 
+	return result;
+}
+
+struct addrinfo *net_resolve(const char *addr, const char *port)
+{
+	assert(port != NULL);
+
+	return _net_resolve(addr, port, 0);
+}
+
+void net_resolve_free(struct addrinfo *gai_result)
+{
+	assert(gai_result != NULL);
+
+	freeaddrinfo(gai_result);
+}
+
+int net_connect(struct addrinfo *gai_result)
+{
+	assert(gai_result != NULL);
+
+	int sock = -1;
+
 	struct addrinfo *rp = NULL;
-	for (rp = result; rp != NULL; rp = rp->ai_next) {
-		*sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-		if (*sock == -1) {
+	for (rp = gai_result; rp != NULL; rp = rp->ai_next) {
+		sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+		if (sock == -1) {
+			print_err("socket", strerror(errno));
 			continue;
 		}
 
-		if (connect(*sock, rp->ai_addr, rp->ai_addrlen) == 0) {
-			freeaddrinfo(result);
-			assert(*sock != -1);
-			return *sock;
+		if (connect(sock, rp->ai_addr, rp->ai_addrlen) == 0) {
+			assert(sock != -1);
+			return sock;
 		}
 
-		close(*sock);
-		*sock = -1;
+		print_err("connect", strerror(errno));
+
+		close(sock);
+		sock = -1;
 	}
 
-	/* Free the result-list of getaddrinfo */
-	freeaddrinfo(result);
-
-	print_err("connect_to_server", "Could not connect");
-	assert(*sock == -1);
+	print_err("net_connect", "Could not connect");
+	assert(sock == -1);
 
 	return -1;
 }

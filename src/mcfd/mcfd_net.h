@@ -19,7 +19,10 @@ int recv_crypt(int crypt_sock, mcfd_cipher *c_dec, unsigned char *inbuf,
 int crypt_to_plain(int crypt_sock, int plain_sock, mcfd_cipher *c_dec);
 int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc);
 
+struct addrinfo *net_resolve(const char *addr, const char *port);
+void net_resolve_free(struct addrinfo *gai_result);
+
+int net_connect(struct addrinfo *gai_result);
 int create_listen_socket(int *sock, const char *addr, const char *port);
-int connect_to_server(int *sock, const char *addr, const char *port);
 
 #endif /* __MCFD_NET_H__ */

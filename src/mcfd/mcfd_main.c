@@ -99,10 +99,15 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 
 	int crypt_sock = -1;
 	int plain_sock = -1;
+
+	struct addrinfo *res_result = net_resolve(dst_addr, dst_port);
+
 	if (mode == MODE_CLIENT) {
 		assert(server_sock == -1);
 
-		server_sock = connect_to_server(&server_sock, dst_addr, dst_port);
+		server_sock = net_connect(res_result);
+		net_resolve_free(res_result);
+
 		if (server_sock == -1) {
 			terminate(EXIT_FAILURE);
 		}
@@ -120,6 +125,7 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 		if (mcfd_auth_server(crypt_sock, c_enc, c_dec, key, nonce_enc,
 					nonce_dec) != 0) {
 			print_err("auth", "failed to authenticate client");
+			net_resolve_free(res_result);
 			terminate(EXIT_FAILURE);
 		}
 
@@ -146,7 +152,9 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 	} else {
 		assert(server_sock == -1);
 
-		server_sock = connect_to_server(&server_sock, dst_addr, dst_port);
+		server_sock = net_connect(res_result);
+		net_resolve_free(res_result);
+
 		if (server_sock == -1) {
 			terminate(EXIT_FAILURE);
 		}
