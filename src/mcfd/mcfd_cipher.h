@@ -1,5 +1,5 @@
-#ifndef __MCFD_CRYPTO_H__
-#define __MCFD_CRYPTO_H__
+#ifndef __MCFD_CIPHER_H__
+#define __MCFD_CIPHER_H__
 
 #define MCFD_BLOCK_SIZE 1016
 
@@ -28,4 +28,4 @@ int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
 		const size_t ciphertext_bytes, const unsigned char *tag,
 		unsigned char *plaintext);
 
-#endif /* __MCFD_CRYPTO_H__ */
+#endif /* __MCFD_CIPHER_H__ */

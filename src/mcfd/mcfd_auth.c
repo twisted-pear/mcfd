@@ -7,7 +7,7 @@
 #include "crypto_helpers.h"
 #include "mcfd_auth.h"
 #include "mcfd_common.h"
-#include "mcfd_crypto.h"
+#include "mcfd_cipher.h"
 #include "mcfd_net.h"
 #include "mcfd_random.h"
 

@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include "mcfd_crypto.h"
+#include "mcfd_cipher.h"
 
 int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec,
 		unsigned char *key, unsigned char *nonce_enc, unsigned char *nonce_dec);

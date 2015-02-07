@@ -4,7 +4,7 @@
 #include <assert.h>
 
 #include "crypto_helpers.h"
-#include "mcfd_crypto.h"
+#include "mcfd_cipher.h"
 #include "spongewrap.h"
 #include <keccak/KeccakF-1600.h>
 #include <keccak/KeccakPad_10_1.h>

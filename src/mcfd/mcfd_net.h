@@ -1,7 +1,7 @@
 #ifndef __MCFD_NET_H__
 #define __MCFD_NET_H__
 
-#include "mcfd_crypto.h"
+#include "mcfd_cipher.h"
 
 void clear_buffers(void);
 
