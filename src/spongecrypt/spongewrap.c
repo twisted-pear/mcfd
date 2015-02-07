@@ -178,14 +178,36 @@ constr_result spongewrap_wrap(spongewrap *w, const unsigned char *a,
 		const size_t a_byte_len, const unsigned char *b, const size_t b_byte_len,
 		unsigned char *c, unsigned char *t, const size_t t_byte_len)
 {
-	assert(w != NULL);
-	assert((a != NULL) | (a_byte_len == 0));
-	assert((b != NULL) | (b_byte_len == 0));
-	assert((c != NULL) | (b_byte_len == 0));
-	assert((t != NULL) | (t_byte_len == 0));
-	assert((b != c) | (b == NULL));
+	if (w == NULL) {
+		return CONSTR_FAILURE;
+	}
+
+	if ((a == NULL) & (a_byte_len != 0)) {
+		return CONSTR_FAILURE;
+	}
+
+	if ((b == NULL) & (b_byte_len != 0)) {
+		return CONSTR_FAILURE;
+	}
+
+	if ((c == NULL) & (b_byte_len != 0)) {
+		return CONSTR_FAILURE;
+	}
+
+	if ((t == NULL) & (t_byte_len != 0)) {
+		return CONSTR_FAILURE;
+	}
+
+	if ((b == c) & (b != NULL)) {
+		return CONSTR_FAILURE;
+	}
 
 	struct internals *internal = (struct internals *) w->internal;
+
+	if (internal->state != STATE_READY) {
+		return CONSTR_FATAL;
+	}
+
 	assert(internal->buf != NULL);
 	assert(internal->state == STATE_READY);
 
@@ -263,16 +285,37 @@ constr_result spongewrap_unwrap(spongewrap *w, const unsigned char *a,
 		const size_t a_byte_len, const unsigned char *c, const size_t c_byte_len,
 		const unsigned char *t, const size_t t_byte_len, unsigned char *b)
 {
-	assert(w != NULL);
-	assert((a != NULL) | (a_byte_len == 0));
-	assert((b != NULL) | (c_byte_len == 0));
-	assert((c != NULL) | (c_byte_len == 0));
-	assert((t != NULL) | (t_byte_len == 0));
-	assert((b != c) | (b == NULL));
+	if (w == NULL) {
+		return CONSTR_FAILURE;
+	}
+
+	if ((a == NULL) & (a_byte_len != 0)) {
+		return CONSTR_FAILURE;
+	}
+
+	if ((b == NULL) & (c_byte_len != 0)) {
+		return CONSTR_FAILURE;
+	}
+
+	if ((c == NULL) & (c_byte_len != 0)) {
+		return CONSTR_FAILURE;
+	}
+
+	if ((t == NULL) & (t_byte_len != 0)) {
+		return CONSTR_FAILURE;
+	}
+
+	if ((b == c) & (b != NULL)) {
+		return CONSTR_FAILURE;
+	}
 
 	struct internals *internal = (struct internals *) w->internal;
+
+	if (internal->state != STATE_READY) {
+		return CONSTR_FATAL;
+	}
+
 	assert(internal->buf != NULL);
-	assert(internal->state == STATE_READY);
 
 	size_t i;
 	size_t block_size = w->block_size;
