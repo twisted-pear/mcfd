@@ -14,6 +14,7 @@
 #include "mcfd_auth.h"
 #include "mcfd_common.h"
 #include "mcfd_crypto.h"
+#include "mcfd_kdf.h"
 #include "mcfd_net.h"
 #include "mcfd_random.h"
 
@@ -432,7 +433,7 @@ int main(int argc, char *const *argv)
 	block_signals();
 
 	/* TODO: figure out how to deal with the salt */
-	if (mcfd_kdf(pass, pass_len, NULL, 0, key) != 0) {
+	if (mcfd_kdf(pass, pass_len, NULL, 0, key, MCFD_KEY_BITS) != 0) {
 		print_err("init ciphers", "failed to derive key");
 		terminate(EXIT_FAILURE);
 	}
