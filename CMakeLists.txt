@@ -11,6 +11,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif ()
 
 include_directories (include/spongecrypt)
+include_directories (include/mcfd)
 add_subdirectory (include)
 
 add_subdirectory (src)
@@ -50,6 +51,9 @@ add_executable (keccak_rng
 
 get_property (H_DUPLEX GLOBAL PROPERTY H_DUPLEX)
 get_property (S_DUPLEX GLOBAL PROPERTY S_DUPLEX)
+
+get_property (H_MCFD_KDF GLOBAL PROPERTY H_MCFD_KDF)
+get_property (S_MCFD_KDF GLOBAL PROPERTY S_MCFD_KDF)
 
 include (CTest)
 add_subdirectory (tests)

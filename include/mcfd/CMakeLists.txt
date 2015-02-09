@@ -1,0 +1,7 @@
+set (H_MCFD_KDF
+	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_kdf.h")
+set_property (GLOBAL APPEND PROPERTY H_MCFD_KDF
+	${H_MCFD_KDF})
+
+set_property (GLOBAL APPEND PROPERTY H_MCFD
+	"${H_MCFD_KDF}")

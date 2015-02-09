@@ -17,6 +17,8 @@ if (CMAKE_COMPILER_IS_GNUCC)
 		"-fprofile-arcs -ftest-coverage")
 	set_source_files_properties ( ${S_DUPLEX} PROPERTIES COMPILE_FLAGS
 		"-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_MCFD_KDF} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
 
 	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs")
 endif ()
@@ -44,7 +46,7 @@ macro (add_unit_test module_name misc_sources)
 	add_executable (${_exe_name}
 		EXCLUDE_FROM_ALL
 		${${_header_name}} ${${_source_name}}
-		${_misc_sources}
+		${misc_sources}
 		${${_test_name}}
 		${H_LIBC_WRAPPERS} ${S_LIBC_WRAPPERS}
 		${H_TEST_UNIT_MAIN} ${S_TEST_UNIT_MAIN})
@@ -65,6 +67,8 @@ add_unit_test ("sponge" "")
 add_unit_test ("duplex" "")
 add_unit_test ("spongeprg" "")
 add_unit_test ("spongewrap" "")
+
+add_unit_test ("mcfd_kdf" "${S_CRYPTO_COMMON}")
 
 get_property (S_TEST_GENKAT GLOBAL PROPERTY S_TEST_GENKAT)
 get_property (S_TEST_DUPLEX GLOBAL PROPERTY S_TEST_DUPLEX)
