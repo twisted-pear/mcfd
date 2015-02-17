@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -158,8 +159,333 @@ static void mcfd_kdf_teardown(void **state __attribute__((unused)))
 	free(sp);
 }
 
-static void mcfd_kdf_normal(void **state __attribute__((unused)))
+static void mcfd_kdf_success(size_t pass_len, bool use_salt, size_t iterations,
+		size_t key_bits)
 {
+	will_return(keccakF_1600_init, f);
+
+	expect_value(keccakPad_10_1_init, rate, RATE);
+	will_return(keccakPad_10_1_init, p);
+
+	expect_value(sponge_init, f, f);
+	expect_value(sponge_init, p, p);
+	expect_value(sponge_init, rate, RATE);
+	will_return(sponge_init, sp);
+
+	expect_value(sponge_absorb, sp, sp);
+	expect_value(sponge_absorb, input, pass);
+	expect_value(sponge_absorb, input_bit_len, pass_len * 8);
+	will_return(sponge_absorb, 0);
+
+	if (use_salt) {
+		expect_value(sponge_absorb, sp, sp);
+		expect_value(sponge_absorb, input, salt);
+		expect_value(sponge_absorb, input_bit_len, SALT_LEN * 8);
+		will_return(sponge_absorb, 0);
+	}
+
+	expect_value(sponge_absorb_final, sp, sp);
+	will_return(sponge_absorb_final, 0);
+
+	expect_value_count(sponge_squeeze, sp, sp, iterations - 1);
+	expect_any_count(sponge_squeeze, output, iterations - 1);
+	expect_value_count(sponge_squeeze, output_bit_len, RATE, iterations - 1);
+	will_return_count(sponge_squeeze, 0, iterations - 1);
+
+	expect_value(sponge_squeeze, sp, sp);
+	expect_value(sponge_squeeze, output, key);
+	expect_value(sponge_squeeze, output_bit_len, key_bits);
+	will_return(sponge_squeeze, 0);
+
+	expect_value(sponge_free, sp, sp);
+	expect_value(keccakPad_10_1_free, p, p);
+	expect_value(keccakF_1600_free, p, f);
+}
+
+static void mcfd_kdf_pass_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_kdf(NULL, PASS_LEN, salt, ITERATIONS, key, KEY_BITS), 1);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+}
+
+static void mcfd_kdf_plen_zero(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_kdf(pass, 0, salt, ITERATIONS, key, KEY_BITS), 1);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+}
+
+static void mcfd_kdf_salt_null(void **state __attribute__((unused)))
+{
+	mcfd_kdf_success(PASS_LEN, false, ITERATIONS, KEY_BITS);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, NULL, ITERATIONS, key, KEY_BITS), 0);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], SQUEEZE_PATTERN);
+	}
+}
+
+static void mcfd_kdf_iter_zero(void **state __attribute__((unused)))
+{
+	mcfd_kdf_success(PASS_LEN, true, ITERATIONS, KEY_BITS);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, 0, key, KEY_BITS), 0);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], SQUEEZE_PATTERN);
+	}
+}
+
+static void mcfd_kdf_key_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, NULL, KEY_BITS), 1);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+}
+
+static void mcfd_kdf_kbits_zero(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, 0), 1);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+}
+
+static void mcfd_kdf_kbits_odd(void **state __attribute__((unused)))
+{
+	mcfd_kdf_success(PASS_LEN, true, ITERATIONS, 3);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, 3), 0);
+
+	size_t i;
+	assert_int_equal(key[0], SQUEEZE_PATTERN);
+	for (i = 1; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+}
+
+static void mcfd_kdf_f_init_fail(void **state __attribute__((unused)))
+{
+	will_return(keccakF_1600_init, NULL);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, KEY_BITS), 1);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+}
+
+static void mcfd_kdf_p_init_fail(void **state __attribute__((unused)))
+{
+	will_return(keccakF_1600_init, f);
+
+	expect_value(keccakPad_10_1_init, rate, RATE);
+	will_return(keccakPad_10_1_init, NULL);
+
+	expect_value(keccakF_1600_free, p, f);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, KEY_BITS), 1);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+}
+
+static void mcfd_kdf_sp_init_fail(void **state __attribute__((unused)))
+{
+	will_return(keccakF_1600_init, f);
+
+	expect_value(keccakPad_10_1_init, rate, RATE);
+	will_return(keccakPad_10_1_init, p);
+
+	expect_value(sponge_init, f, f);
+	expect_value(sponge_init, p, p);
+	expect_value(sponge_init, rate, RATE);
+	will_return(sponge_init, NULL);
+
+	expect_value(keccakPad_10_1_free, p, p);
+	expect_value(keccakF_1600_free, p, f);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, KEY_BITS), 1);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+}
+
+static void mcfd_kdf_absorb_fail(void **state __attribute__((unused)))
+{
+	will_return(keccakF_1600_init, f);
+
+	expect_value(keccakPad_10_1_init, rate, RATE);
+	will_return(keccakPad_10_1_init, p);
+
+	expect_value(sponge_init, f, f);
+	expect_value(sponge_init, p, p);
+	expect_value(sponge_init, rate, RATE);
+	will_return(sponge_init, sp);
+
+	expect_value(sponge_absorb, sp, sp);
+	expect_value(sponge_absorb, input, pass);
+	expect_value(sponge_absorb, input_bit_len, PASS_LEN * 8);
+	will_return(sponge_absorb, 1);
+
+	expect_value(sponge_free, sp, sp);
+	expect_value(keccakPad_10_1_free, p, p);
+	expect_value(keccakF_1600_free, p, f);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, KEY_BITS), 1);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+	for (i = 0; i < PASS_LEN; i++) {
+		assert_int_equal(pass[i], PASS_PATTERN);
+	}
+	for (i = 0; i < SALT_LEN; i++) {
+		assert_int_equal(salt[i], SALT_PATTERN);
+	}
+
+	will_return(keccakF_1600_init, f);
+
+	expect_value(keccakPad_10_1_init, rate, RATE);
+	will_return(keccakPad_10_1_init, p);
+
+	expect_value(sponge_init, f, f);
+	expect_value(sponge_init, p, p);
+	expect_value(sponge_init, rate, RATE);
+	will_return(sponge_init, sp);
+
+	expect_value(sponge_absorb, sp, sp);
+	expect_value(sponge_absorb, input, pass);
+	expect_value(sponge_absorb, input_bit_len, PASS_LEN * 8);
+	will_return(sponge_absorb, 0);
+
+	expect_value(sponge_absorb, sp, sp);
+	expect_value(sponge_absorb, input, salt);
+	expect_value(sponge_absorb, input_bit_len, SALT_LEN * 8);
+	will_return(sponge_absorb, 1);
+
+	expect_value(sponge_free, sp, sp);
+	expect_value(keccakPad_10_1_free, p, p);
+	expect_value(keccakF_1600_free, p, f);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, KEY_BITS), 1);
+
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+}
+
+static void mcfd_kdf_absorb_final_fail(void **state __attribute__((unused)))
+{
+	will_return(keccakF_1600_init, f);
+
+	expect_value(keccakPad_10_1_init, rate, RATE);
+	will_return(keccakPad_10_1_init, p);
+
+	expect_value(sponge_init, f, f);
+	expect_value(sponge_init, p, p);
+	expect_value(sponge_init, rate, RATE);
+	will_return(sponge_init, sp);
+
+	expect_value(sponge_absorb, sp, sp);
+	expect_value(sponge_absorb, input, pass);
+	expect_value(sponge_absorb, input_bit_len, PASS_LEN * 8);
+	will_return(sponge_absorb, 0);
+
+	expect_value(sponge_absorb, sp, sp);
+	expect_value(sponge_absorb, input, salt);
+	expect_value(sponge_absorb, input_bit_len, SALT_LEN * 8);
+	will_return(sponge_absorb, 0);
+
+	expect_value(sponge_absorb_final, sp, sp);
+	will_return(sponge_absorb_final, 1);
+
+	expect_value(sponge_free, sp, sp);
+	expect_value(keccakPad_10_1_free, p, p);
+	expect_value(keccakF_1600_free, p, f);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, KEY_BITS), 1);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+}
+
+static void mcfd_kdf_squeeze_fail(void **state __attribute__((unused)))
+{
+
+	will_return(keccakF_1600_init, f);
+
+	expect_value(keccakPad_10_1_init, rate, RATE);
+	will_return(keccakPad_10_1_init, p);
+
+	expect_value(sponge_init, f, f);
+	expect_value(sponge_init, p, p);
+	expect_value(sponge_init, rate, RATE);
+	will_return(sponge_init, sp);
+
+	expect_value(sponge_absorb, sp, sp);
+	expect_value(sponge_absorb, input, pass);
+	expect_value(sponge_absorb, input_bit_len, PASS_LEN * 8);
+	will_return(sponge_absorb, 0);
+
+	expect_value(sponge_absorb, sp, sp);
+	expect_value(sponge_absorb, input, salt);
+	expect_value(sponge_absorb, input_bit_len, SALT_LEN * 8);
+	will_return(sponge_absorb, 0);
+
+	expect_value(sponge_absorb_final, sp, sp);
+	will_return(sponge_absorb_final, 0);
+
+	expect_value_count(sponge_squeeze, sp, sp, ITERATIONS - 2);
+	expect_any_count(sponge_squeeze, output, ITERATIONS - 2);
+	expect_value_count(sponge_squeeze, output_bit_len, RATE, ITERATIONS - 2);
+	will_return_count(sponge_squeeze, 0, ITERATIONS - 2);
+
+	expect_value(sponge_squeeze, sp, sp);
+	expect_any(sponge_squeeze, output);
+	expect_value(sponge_squeeze, output_bit_len, RATE);
+	will_return(sponge_squeeze, 1);
+
+	expect_value(sponge_free, sp, sp);
+	expect_value(keccakPad_10_1_free, p, p);
+	expect_value(keccakF_1600_free, p, f);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, KEY_BITS), 1);
+
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+	for (i = 0; i < PASS_LEN; i++) {
+		assert_int_equal(pass[i], PASS_PATTERN);
+	}
+	for (i = 0; i < SALT_LEN; i++) {
+		assert_int_equal(salt[i], SALT_PATTERN);
+	}
+
 	will_return(keccakF_1600_init, f);
 
 	expect_value(keccakPad_10_1_init, rate, RATE);
@@ -191,11 +517,22 @@ static void mcfd_kdf_normal(void **state __attribute__((unused)))
 	expect_value(sponge_squeeze, sp, sp);
 	expect_value(sponge_squeeze, output, key);
 	expect_value(sponge_squeeze, output_bit_len, KEY_BITS);
-	will_return(sponge_squeeze, 0);
+	will_return(sponge_squeeze, 1);
 
 	expect_value(sponge_free, sp, sp);
 	expect_value(keccakPad_10_1_free, p, p);
 	expect_value(keccakF_1600_free, p, f);
+
+	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, KEY_BITS), 1);
+
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], 0);
+	}
+}
+
+static void mcfd_kdf_normal(void **state __attribute__((unused)))
+{
+	mcfd_kdf_success(PASS_LEN, true, ITERATIONS, KEY_BITS);
 
 	assert_int_equal(mcfd_kdf(pass, PASS_LEN, salt, ITERATIONS, key, KEY_BITS), 0);
 
@@ -210,6 +547,32 @@ int run_unit_tests(void)
 	int res = 0;
 
 	const UnitTest mcfd_kdf_tests[] = {
+		unit_test_setup_teardown(mcfd_kdf_pass_null,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_plen_zero,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_salt_null,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_iter_zero,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_key_null,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_kbits_zero,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_kbits_odd,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_f_init_fail,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_p_init_fail,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_sp_init_fail,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_absorb_fail,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_absorb_final_fail,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
+		unit_test_setup_teardown(mcfd_kdf_squeeze_fail,
+				mcfd_kdf_setup, mcfd_kdf_teardown),
 		unit_test_setup_teardown(mcfd_kdf_normal,
 				mcfd_kdf_setup, mcfd_kdf_teardown)
 	};

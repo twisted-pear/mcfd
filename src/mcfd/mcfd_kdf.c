@@ -13,9 +13,13 @@
 int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 		const size_t iterations, unsigned char *key, const size_t key_bits)
 {
-	assert(pass != NULL);
-	assert(pass_len > 0);
-	assert(key != NULL);
+	if (pass == NULL || pass_len == 0) {
+		return 1;
+	}
+
+	if (key == NULL || key_bits == 0) {
+		return 1;
+	}
 
 	size_t iter = iterations > 0 ? iterations : MCFD_KDF_DEF_ITERATIONS;
 
@@ -62,6 +66,7 @@ int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 	}
 
 	if (sponge_squeeze(sp, key, key_bits) != CONSTR_SUCCESS) {
+		explicit_bzero(key, (key_bits + 7) / 8);
 		goto squeeze_fail;
 	}
 
