@@ -147,3 +147,16 @@ set_target_properties (test_spongewrap PROPERTIES LINK_FLAGS
 add_test (build_test_spongewrap "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target test_spongewrap)
 add_test (run_test_spongewrap test_spongewrap)
+
+add_executable (mcfd_test
+	EXCLUDE_FROM_ALL
+	${H_CRYPTO_COMMON} ${S_CRYPTO_COMMON}
+	${H_KECCAK} ${S_KECCAK}
+	${H_SPONGE} ${S_SPONGE}
+	${H_SPONGEWRAP} ${S_SPONGEWRAP}
+	${H_MCFD} ${S_MCFD})
+add_test (build_mcfd_test "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
+	--target mcfd_test)
+
+configure_file (test_end_to_end.sh test_end_to_end.sh COPYONLY)
+add_test (end_to_end test_end_to_end.sh "${CMAKE_BINARY_DIR}/tests/mcfd_test" "asdf" 5000)
