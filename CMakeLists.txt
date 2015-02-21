@@ -55,5 +55,8 @@ get_property (S_DUPLEX GLOBAL PROPERTY S_DUPLEX)
 get_property (H_MCFD_KDF GLOBAL PROPERTY H_MCFD_KDF)
 get_property (S_MCFD_KDF GLOBAL PROPERTY S_MCFD_KDF)
 
+get_property (H_MCFD_CIPHER GLOBAL PROPERTY H_MCFD_CIPHER)
+get_property (S_MCFD_CIPHER GLOBAL PROPERTY S_MCFD_CIPHER)
+
 include (CTest)
 add_subdirectory (tests)
