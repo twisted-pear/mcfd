@@ -23,7 +23,7 @@ dir=`mktemp -d`
 dd if=/dev/urandom of="${dir}/cin" bs=1 count=10k
 dd if=/dev/urandom of="${dir}/sin" bs=1 count=10k
 
-"${mcfd}" -k "${key}" -l 127.0.0.1 ${clport} 127.0.0.1 ${slport} > "${dir}/client.out" 2>&1 &
+echo "${key}" | "${mcfd}" -l 127.0.0.1 ${clport} 127.0.0.1 ${slport} > "${dir}/client.out" 2>&1 &
 clientpid=${!}
 
 "${mcfd}" -s -k "${key}" -l 127.0.0.1 ${slport} 127.0.0.1 ${scport} > "${dir}/server.out" 2>&1 &
