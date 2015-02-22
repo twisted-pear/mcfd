@@ -57,7 +57,9 @@ static void nonce_succ(unsigned char *nonce)
 
 mcfd_cipher *mcfd_cipher_init(const unsigned char *init_nonce, const unsigned char *key)
 {
-	assert(key != NULL);
+	if (key == NULL) {
+		return NULL;
+	}
 
 	permutation *f = keccakF_1600_init();
 	if (f == NULL) {

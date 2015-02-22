@@ -15,6 +15,9 @@
 
 #include "libc_wrappers.h"
 
+#define CREATE_MAX_ALLOC_SIZE 256
+#define CREATE_MAX_ALLOCS 10
+
 #define PERM_WIDTH 1600
 #define RATE MCFD_BLOCK_SIZE + 8
 #define BLOCK_SIZE MCFD_BLOCK_SIZE
@@ -126,7 +129,7 @@ static void mcfd_cipher_init_setup(void **state __attribute__((unused)))
 
 	init_nonce = calloc((NONCE_BITS + 7) / 8, 1);
 	assert_non_null(init_nonce);
-	memset(key, NONCE_PATTERN, (NONCE_BITS + 7) / 8);
+	memset(init_nonce, NONCE_PATTERN, (NONCE_BITS + 7) / 8);
 
 	f = calloc(1, sizeof(permutation));
 	assert_non_null(f);
@@ -150,6 +153,14 @@ static void mcfd_cipher_init_setup(void **state __attribute__((unused)))
 
 static void mcfd_cipher_init_teardown(void **state __attribute__((unused)))
 {
+	size_t i;
+	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
+		assert_int_equal(key[i], KEY_PATTERN);
+	}
+	for (i = 0; i < (NONCE_BITS + 7) / 8; i++) {
+		assert_int_equal(init_nonce[i], NONCE_PATTERN);
+	}
+
 	free(key);
 	free(init_nonce);
 
@@ -181,8 +192,134 @@ static void mcfd_cipher_free_success(void)
 	expect_value(keccakF_1600_free, p, f);
 }
 
+static void mcfd_cipher_init_key_null(void **state __attribute__((unused)))
+{
+	mcfd_cipher *cipher = mcfd_cipher_init(init_nonce, NULL);
+	assert_null(cipher);
+}
+
+static void mcfd_cipher_init_nonce_null(void **state __attribute__((unused)))
+{
+	mcfd_cipher_init_success();
+
+	mcfd_cipher *cipher = mcfd_cipher_init(NULL, key);
+	assert_non_null(cipher);
+
+	mcfd_cipher_free_success();
+
+	mcfd_cipher_free(cipher);
+}
+
+static void mcfd_cipher_init_f_init_fail(void **state __attribute__((unused)))
+{
+	will_return(keccakF_1600_init, NULL);
+
+	mcfd_cipher *cipher = mcfd_cipher_init(init_nonce, key);
+	assert_null(cipher);
+}
+
+static void mcfd_cipher_init_p_init_fail(void **state __attribute__((unused)))
+{
+	will_return(keccakF_1600_init, f);
+
+	expect_value(keccakPad_10_1_init, rate, RATE);
+	will_return(keccakPad_10_1_init, NULL);
+
+	expect_value(keccakF_1600_free, p, f);
+
+	mcfd_cipher *cipher = mcfd_cipher_init(init_nonce, key);
+	assert_null(cipher);
+}
+
+static void mcfd_cipher_init_w_init_fail(void **state __attribute__((unused)))
+{
+	will_return(keccakF_1600_init, f);
+
+	expect_value(keccakPad_10_1_init, rate, RATE);
+	will_return(keccakPad_10_1_init, p);
+
+	expect_value(spongewrap_init, f, f);
+	expect_value(spongewrap_init, p, p);
+	expect_value(spongewrap_init, rate, RATE);
+	expect_value(spongewrap_init, block_size, BLOCK_SIZE / 8);
+	expect_value(spongewrap_init, key, key);
+	expect_value(spongewrap_init, key_byte_len, KEY_BITS / 8);
+	will_return(spongewrap_init, NULL);
+
+	expect_value(keccakPad_10_1_free, p, p);
+	expect_value(keccakF_1600_free, p, f);
+
+	mcfd_cipher *cipher = mcfd_cipher_init(init_nonce, key);
+	assert_null(cipher);
+}
+
+static void mcfd_cipher_init_noalloc(void **state __attribute__((unused)))
+{
+	mcfd_cipher_init_success();
+	mcfd_cipher_free_success();
+
+	/* mcfd_cipher_init has to allocate at least some memory */
+
+	expect_any_count(__wrap_alloc, nmemb, -1);
+	expect_any_count(__wrap_alloc, size, -1);
+	will_return_count(__wrap_alloc, NULL, -1);
+
+	__activate_wrap_alloc = 1;
+
+	mcfd_cipher *cipher = mcfd_cipher_init(init_nonce, key);
+
+	__activate_wrap_alloc = 0;
+
+	assert_null(cipher);
+}
+
+static void mcfd_cipher_init_alloc_limited(void **state __attribute__((unused)))
+{
+	mcfd_cipher_init_success();
+	mcfd_cipher_free_success();
+
+	expect_any_count(__wrap_alloc, nmemb, -1);
+	expect_any_count(__wrap_alloc, size, -1);
+
+	mcfd_cipher *cipher = NULL;
+
+	size_t i;
+	for (i = 1; i <= CREATE_MAX_ALLOCS; i++) {
+		will_return_count(__wrap_alloc, __WRAP_ALLOC_NEW, i);
+		will_return_count(__wrap_alloc, NULL, 1);
+
+		__activate_wrap_alloc = 1;
+
+		cipher = mcfd_cipher_init(init_nonce, key);
+		if (cipher != NULL) {
+			break;
+		}
+
+		__activate_wrap_alloc = 0;
+
+		mcfd_cipher_init_success();
+		mcfd_cipher_free_success();
+	}
+
+	assert_null(__wrap_alloc(0, 1, ALLOC_MALLOC));
+	__activate_wrap_alloc = 0;
+	assert_in_range(i, 1, CREATE_MAX_ALLOCS);
+
+	assert_non_null(cipher);
+
+	mcfd_cipher_free(cipher);
+}
+
 static void mcfd_cipher_init_normal(void **state __attribute__((unused)))
 {
+	mcfd_cipher_init_success();
+
+	mcfd_cipher *cipher = mcfd_cipher_init(init_nonce, key);
+	assert_non_null(cipher);
+
+	mcfd_cipher_free_success();
+
+	mcfd_cipher_free(cipher);
 }
 
 mcfd_cipher *cipher;
@@ -224,6 +361,20 @@ int run_unit_tests(void)
 	int res = 0;
 
 	const UnitTest mcfd_cipher_init_tests[] = {
+		unit_test_setup_teardown(mcfd_cipher_init_key_null,
+				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
+		unit_test_setup_teardown(mcfd_cipher_init_nonce_null,
+				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
+		unit_test_setup_teardown(mcfd_cipher_init_f_init_fail,
+				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
+		unit_test_setup_teardown(mcfd_cipher_init_p_init_fail,
+				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
+		unit_test_setup_teardown(mcfd_cipher_init_w_init_fail,
+				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
+		unit_test_setup_teardown(mcfd_cipher_init_noalloc,
+				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
+		unit_test_setup_teardown(mcfd_cipher_init_alloc_limited,
+				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
 		unit_test_setup_teardown(mcfd_cipher_init_normal,
 				mcfd_cipher_init_setup, mcfd_cipher_init_teardown)
 	};
