@@ -1,3 +1,4 @@
+add actual documentation
 recheck auth protocol overall
 find asserts that check things which deserve proper error handling
 use gcc 4.9's ubsan?
