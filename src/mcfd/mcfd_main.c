@@ -18,6 +18,7 @@
 #include "mcfd_net.h"
 #include "mcfd_random.h"
 
+static mcfd_cipher *c_auth = NULL;
 static mcfd_cipher *c_enc = NULL;
 static mcfd_cipher *c_dec = NULL;
 
@@ -28,7 +29,10 @@ static int listen_sock = -1;
 static int client_sock = -1;
 static int server_sock = -1;
 
-static unsigned char key[MCFD_KEY_BYTES];
+static unsigned char key_auth[MCFD_KEY_BYTES];
+static unsigned char key_enc[MCFD_KEY_BYTES];
+static unsigned char key_dec[MCFD_KEY_BYTES];
+
 static unsigned char nonce_enc[MCFD_NONCE_BYTES];
 static unsigned char nonce_dec[MCFD_NONCE_BYTES];
 
@@ -36,9 +40,17 @@ static struct termios *term_old = NULL;
 
 void cleanup(void)
 {
-	explicit_bzero(key, MCFD_KEY_BYTES);
+	explicit_bzero(key_auth, MCFD_KEY_BYTES);
+	explicit_bzero(key_enc, MCFD_KEY_BYTES);
+	explicit_bzero(key_dec, MCFD_KEY_BYTES);
+
 	explicit_bzero(nonce_enc, MCFD_NONCE_BYTES);
 	explicit_bzero(nonce_dec, MCFD_NONCE_BYTES);
+
+	if (c_auth != NULL) {
+		mcfd_cipher_free(c_auth);
+		c_auth = NULL;
+	}
 
 	if (c_enc != NULL) {
 		mcfd_cipher_free(c_enc);
@@ -90,8 +102,9 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 		const enum op_mode mode)
 {
 	assert(client_sock != -1);
-	assert(c_enc != NULL);
-	assert(c_dec != NULL);
+	assert(c_auth != NULL);
+	assert(c_enc == NULL);
+	assert(c_dec == NULL);
 
 	close(listen_sock);
 	listen_sock = -1;
@@ -114,7 +127,7 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 		}
 		crypt_sock = server_sock;
 
-		if (mcfd_auth_client(crypt_sock, c_enc, c_dec, key, nonce_enc,
+		if (mcfd_auth_client(crypt_sock, c_auth, key_enc, key_dec, nonce_enc,
 					nonce_dec) != 0) {
 			print_err("auth", "failed to authenticate server");
 			terminate(EXIT_FAILURE);
@@ -123,7 +136,7 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 	} else {
 		crypt_sock = client_sock;
 
-		if (mcfd_auth_server(crypt_sock, c_enc, c_dec, key, nonce_enc,
+		if (mcfd_auth_server(crypt_sock, c_auth, key_enc, key_dec, nonce_enc,
 					nonce_dec) != 0) {
 			print_err("auth", "failed to authenticate client");
 			net_resolve_free(res_result);
@@ -136,17 +149,27 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 	 * properly destroyed. */
 	block_signals();
 
-	mcfd_cipher_free(c_enc);
-	mcfd_cipher_free(c_dec);
+	mcfd_cipher_free(c_auth);
+	c_auth = NULL;
 
-	c_enc = mcfd_cipher_init(nonce_enc, key);
-	c_dec = mcfd_cipher_init(nonce_dec, key);
+	c_enc = mcfd_cipher_init(nonce_enc, key_enc);
+	c_dec = mcfd_cipher_init(nonce_dec, key_dec);
+
+	explicit_bzero(key_enc, MCFD_KEY_BYTES);
+	explicit_bzero(key_dec, MCFD_KEY_BYTES);
+
+	explicit_bzero(nonce_enc, MCFD_NONCE_BYTES);
+	explicit_bzero(nonce_dec, MCFD_NONCE_BYTES);
 
 	unblock_signals();
 
-	explicit_bzero(key, MCFD_KEY_BYTES);
-	explicit_bzero(nonce_enc, MCFD_NONCE_BYTES);
-	explicit_bzero(nonce_dec, MCFD_NONCE_BYTES);
+	if (c_enc == NULL || c_dec == NULL) {
+		print_err("init ciphers", "failed to init encryption ciphers");
+		if (mode != MODE_CLIENT) {
+			net_resolve_free(res_result);
+		}
+		terminate(EXIT_FAILURE);
+	}
 
 	if (mode == MODE_CLIENT) {
 		plain_sock = client_sock;
@@ -161,6 +184,10 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 		}
 		plain_sock = server_sock;
 	}
+
+	assert(c_auth == NULL);
+	assert(c_enc != NULL);
+	assert(c_dec != NULL);
 
 	assert(crypt_sock != -1);
 	assert(plain_sock != -1);
@@ -433,30 +460,21 @@ int main(int argc, char *const *argv)
 	block_signals();
 
 	/* TODO: figure out how to deal with the salt */
-	if (mcfd_kdf(pass, pass_len, NULL, 0, key, MCFD_KEY_BITS) != 0) {
+	if (mcfd_kdf(pass, pass_len, NULL, 0, key_auth, MCFD_KEY_BITS) != 0) {
 		print_err("init ciphers", "failed to derive key");
 		terminate(EXIT_FAILURE);
 	}
 
 	explicit_bzero(pass, pass_len);
 
-	/* Reverse keys in one direction to simplify auth. */
-	if (mode == MODE_CLIENT) {
-		c_enc = mcfd_cipher_init(NULL, key);
-		reverse_bytes(key, MCFD_KEY_BYTES);
-		c_dec = mcfd_cipher_init(NULL, key);
-	} else {
-		c_dec = mcfd_cipher_init(NULL, key);
-		reverse_bytes(key, MCFD_KEY_BYTES);
-		c_enc = mcfd_cipher_init(NULL, key);
-	}
+	c_auth = mcfd_cipher_init(NULL, key_auth);
 
-	explicit_bzero(key, MCFD_KEY_BYTES);
+	explicit_bzero(key_auth, MCFD_KEY_BYTES);
 
 	unblock_signals();
 
-	if (c_enc == NULL || c_dec == NULL) {
-		print_err("init ciphers", "failed to init ciphers");
+	if (c_auth == NULL) {
+		print_err("init cipher", "failed to init auth cipher");
 		terminate(EXIT_FAILURE);
 	}
 
