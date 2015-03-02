@@ -10,6 +10,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
 	set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Werror")
 endif ()
 
+include_directories (include/curve25519)
 include_directories (include/spongecrypt)
 include_directories (include/mcfd)
 add_subdirectory (include)
@@ -28,6 +29,9 @@ get_property (S_SPONGE GLOBAL PROPERTY S_SPONGE)
 get_property (H_SPONGEWRAP GLOBAL PROPERTY H_SPONGEWRAP)
 get_property (S_SPONGEWRAP GLOBAL PROPERTY S_SPONGEWRAP)
 
+get_property (H_CURVE25519 GLOBAL PROPERTY H_CURVE25519)
+get_property (S_CURVE25519 GLOBAL PROPERTY S_CURVE25519)
+
 get_property (H_MCFD GLOBAL PROPERTY H_MCFD)
 get_property (S_MCFD GLOBAL PROPERTY S_MCFD)
 
@@ -36,6 +40,7 @@ add_executable (mcfd
 	${H_KECCAK} ${S_KECCAK}
 	${H_SPONGE} ${S_SPONGE}
 	${H_SPONGEWRAP} ${S_SPONGEWRAP}
+	${H_CURVE25519} ${S_CURVE25519}
 	${H_MCFD} ${S_MCFD})
 
 get_property (H_SPONGEPRG GLOBAL PROPERTY H_SPONGEPRG)
@@ -51,6 +56,8 @@ add_executable (keccak_rng
 
 get_property (H_DUPLEX GLOBAL PROPERTY H_DUPLEX)
 get_property (S_DUPLEX GLOBAL PROPERTY S_DUPLEX)
+
+get_property (S_CURVE25519_DONNA GLOBAL PROPERTY S_CURVE25519_DONNA)
 
 get_property (H_MCFD_KDF GLOBAL PROPERTY H_MCFD_KDF)
 get_property (S_MCFD_KDF GLOBAL PROPERTY S_MCFD_KDF)

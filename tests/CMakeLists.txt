@@ -17,7 +17,11 @@ if (CMAKE_COMPILER_IS_GNUCC)
 		"-fprofile-arcs -ftest-coverage")
 	set_source_files_properties ( ${S_DUPLEX} PROPERTIES COMPILE_FLAGS
 		"-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_CURVE25519_DONNA} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
 	set_source_files_properties ( ${S_MCFD_KDF} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_MCFD_CIPHER} PROPERTIES COMPILE_FLAGS
 		"-fprofile-arcs -ftest-coverage")
 
 	set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-arcs")
@@ -75,6 +79,10 @@ get_property (S_TEST_GENKAT GLOBAL PROPERTY S_TEST_GENKAT)
 get_property (S_TEST_DUPLEX GLOBAL PROPERTY S_TEST_DUPLEX)
 get_property (S_TEST_SPONGEPRG GLOBAL PROPERTY S_TEST_SPONGEPRG)
 get_property (S_TEST_SPONGEWRAP GLOBAL PROPERTY S_TEST_SPONGEWRAP)
+
+get_property (S_TEST_CURVE25519 GLOBAL PROPERTY S_TEST_CURVE25519)
+get_property (S_TEST_CURVE25519_NONCANON GLOBAL PROPERTY
+	S_TEST_CURVE25519_NONCANON)
 
 add_executable (test_genKAT
 	EXCLUDE_FROM_ALL
@@ -148,12 +156,37 @@ add_test (build_test_spongewrap "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target test_spongewrap)
 add_test (run_test_spongewrap test_spongewrap)
 
+add_executable (test_curve25519
+	EXCLUDE_FROM_ALL
+	${S_CURVE25519_DONNA}
+	${H_LIBC_WRAPPERS} ${S_LIBC_WRAPPERS}
+	${S_TEST_CURVE25519})
+target_link_libraries (test_curve25519 cmocka)
+set_target_properties (test_curve25519 PROPERTIES LINK_FLAGS
+	"${ALLOC_LINK_FLAGS}")
+add_test (build_test_curve25519 "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
+	--target test_curve25519)
+add_test (run_test_curve25519 test_curve25519)
+
+add_executable (test_curve25519_noncanon
+	EXCLUDE_FROM_ALL
+	${S_CURVE25519_DONNA}
+	${H_LIBC_WRAPPERS} ${S_LIBC_WRAPPERS}
+	${S_TEST_CURVE25519_NONCANON})
+target_link_libraries (test_curve25519_noncanon cmocka)
+set_target_properties (test_curve25519_noncanon PROPERTIES LINK_FLAGS
+	"${ALLOC_LINK_FLAGS}")
+add_test (build_test_curve25519_noncanon "${CMAKE_COMMAND}" --build
+	${CMAKE_BINARY_DIR} --target test_curve25519_noncanon)
+add_test (run_test_curve25519_noncanon test_curve25519_noncanon)
+
 add_executable (mcfd_test
 	EXCLUDE_FROM_ALL
 	${H_CRYPTO_COMMON} ${S_CRYPTO_COMMON}
 	${H_KECCAK} ${S_KECCAK}
 	${H_SPONGE} ${S_SPONGE}
 	${H_SPONGEWRAP} ${S_SPONGEWRAP}
+	${H_CURVE25519} ${S_CURVE25519}
 	${H_MCFD} ${S_MCFD})
 add_test (build_mcfd_test "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target mcfd_test)
