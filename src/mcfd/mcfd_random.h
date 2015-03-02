@@ -5,7 +5,7 @@
 
 /* TODO: remove this limit */
 /* The maximum number of random bytes the application can request. */
-#define MCFD_RANDOM_MAX 160
+#define MCFD_RANDOM_MAX 192
 
 int mcfd_random_init(void);
 void mcfd_random_destroy(void);
