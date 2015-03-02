@@ -99,7 +99,8 @@ void spongeprg_free(spongeprg *g)
 	free(g);
 }
 
-int spongeprg_feed(spongeprg *g, const unsigned char *in, const size_t in_byte_len)
+constr_result spongeprg_feed(spongeprg *g, const unsigned char *in,
+		const size_t in_byte_len)
 {
 	assert(g != NULL);
 	assert((in != NULL) | (in_byte_len == 0));
@@ -166,7 +167,7 @@ int spongeprg_feed(spongeprg *g, const unsigned char *in, const size_t in_byte_l
 	return 0;
 }
 
-int spongeprg_fetch(spongeprg *g, unsigned char *out, const size_t out_byte_len)
+constr_result spongeprg_fetch(spongeprg *g, unsigned char *out, const size_t out_byte_len)
 {
 	assert(g != NULL);
 	assert((out != NULL) | (out_byte_len == 0));
@@ -242,7 +243,7 @@ int spongeprg_fetch(spongeprg *g, unsigned char *out, const size_t out_byte_len)
 }
 
 /* TODO: this requires block_size >= width - rate */
-int spongeprg_forget(spongeprg *g)
+constr_result spongeprg_forget(spongeprg *g)
 {
 	assert(g != NULL);
 
