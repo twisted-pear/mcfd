@@ -14,9 +14,9 @@
 #include "libc_wrappers.h"
 
 #define CREATE_WIDTH 1600
-#define CREATE_RATE 1027
+#define CREATE_RATE 1024
 #define CREATE_MIN_RATE 2
-#define CREATE_BLOCK_SIZE (1024 / 8) // block size is in byte
+#define CREATE_BLOCK_SIZE (1016 / 8) // block size is in byte
 #define CREATE_MAX_ALLOC_SIZE (CREATE_RATE * 2)
 #define CREATE_MAX_ALLOCS 10
 #define CREATE_KEY_SIZE (256 / 8) // key length is in byte
