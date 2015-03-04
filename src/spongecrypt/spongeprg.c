@@ -30,7 +30,9 @@ static void spongeprg_clear_buffers(spongeprg *g)
 spongeprg *spongeprg_init(permutation *f, pad *p, const size_t rate,
 		const size_t block_size)
 {
-	assert(f != NULL && p != NULL);
+	if (f == NULL || p == NULL) {
+		return NULL;
+	}
 
 	if (block_size == 0) {
 		return NULL;
