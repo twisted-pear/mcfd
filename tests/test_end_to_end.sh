@@ -29,12 +29,12 @@ clientpid=${!}
 "${mcfd}" -s -k "${key}" -l 127.0.0.1 ${slport} 127.0.0.1 ${scport} > "${dir}/server.out" 2>&1 &
 serverpid=${!}
 
-nc --idle-timeout=5 -l -p ${scport} < "${dir}/sin" > "${dir}/sout" &
+nc6 --idle-timeout=5 -l -p ${scport} < "${dir}/sin" > "${dir}/sout" &
 ncserverpid=${!}
 
 sleep 5
 
-nc --idle-timeout=5 127.0.0.1 ${clport} < "${dir}/cin" > "${dir}/cout"
+nc6 --idle-timeout=5 127.0.0.1 ${clport} < "${dir}/cin" > "${dir}/cout"
 
 wait ${ncserverpid}
 
