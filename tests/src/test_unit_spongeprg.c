@@ -332,6 +332,58 @@ static void spongeprg_init_bs_max(void **state __attribute__((unused)))
 	spongeprg_free(w);
 }
 
+static void spongeprg_feed_setup(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_teardown(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_g_null(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_in_null(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_ilen_zero(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_in_null_ilen_zero(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_xor_fail(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_pf_fail(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_get_fail(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_normal(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_ilen_lt_bs(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_ilen_eq_bs(void **state __attribute__((unused)))
+{
+}
+
+static void spongeprg_feed_ilen_gt_bs(void **state __attribute__((unused)))
+{
+}
+
 int run_unit_tests(void)
 {
 	int res = 0;
@@ -379,6 +431,35 @@ int run_unit_tests(void)
 
 	fprintf(stderr, "spongeprg_init:\n");
 	res |= run_tests(spongeprg_init_tests);
+	fprintf(stderr, "\n");
+
+	const UnitTest spongeprg_feed_tests[] = {
+		unit_test_setup_teardown(spongeprg_feed_g_null,
+				spongeprg_feed_setup, spongeprg_feed_teardown),
+		unit_test_setup_teardown(spongeprg_feed_in_null,
+				spongeprg_feed_setup, spongeprg_feed_teardown),
+		unit_test_setup_teardown(spongeprg_feed_ilen_zero,
+				spongeprg_feed_setup, spongeprg_feed_teardown),
+		unit_test_setup_teardown(spongeprg_feed_in_null_ilen_zero,
+				spongeprg_feed_setup, spongeprg_feed_teardown),
+		unit_test_setup_teardown(spongeprg_feed_xor_fail,
+				spongeprg_feed_setup, spongeprg_feed_teardown),
+		unit_test_setup_teardown(spongeprg_feed_pf_fail,
+				spongeprg_feed_setup, spongeprg_feed_teardown),
+		unit_test_setup_teardown(spongeprg_feed_get_fail,
+				spongeprg_feed_setup, spongeprg_feed_teardown),
+		unit_test_setup_teardown(spongeprg_feed_normal,
+				spongeprg_feed_setup, spongeprg_feed_teardown),
+		unit_test_setup_teardown(spongeprg_feed_ilen_lt_bs,
+				spongeprg_feed_setup, spongeprg_feed_teardown),
+		unit_test_setup_teardown(spongeprg_feed_ilen_eq_bs,
+				spongeprg_feed_setup, spongeprg_feed_teardown),
+		unit_test_setup_teardown(spongeprg_feed_ilen_gt_bs,
+				spongeprg_feed_setup, spongeprg_feed_teardown)
+	};
+
+	fprintf(stderr, "spongeprg_feed:\n");
+	res |= run_tests(spongeprg_feed_tests);
 	fprintf(stderr, "\n");
 
 	return res;
