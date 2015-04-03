@@ -36,7 +36,7 @@ mcfd doesn't...
 
 * provide security against local attackers
 * support any kind of PKI infrastructure
-* provide backwards compatibility. If I decide to change to protocol client and server
+* provide backwards compatibility. If I decide to change the protocol client and server
   need to be updated.
 
 Warning
@@ -111,4 +111,4 @@ mcfd is licensed under the GPLv3.
 Why?
 ----
 
-I needed the ECTS credits and found out that i had way too much time on my hands.
+I needed the ECTS credits and found out that I had way too much time on my hands.
