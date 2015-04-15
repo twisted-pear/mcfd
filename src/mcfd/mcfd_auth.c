@@ -13,12 +13,83 @@
 #include "mcfd_net.h"
 #include "mcfd_random.h"
 
+static_assert(MCFD_KEY_BYTES % 2 == 0, "Odd key length");
+static_assert(MCFD_NONCE_BYTES % 2 == 0, "Odd nonce length");
+
 #define CHALLENGE_BYTES MCFD_TAG_BYTES
 
-/* These fields are never explicitly cleared, they don't have to be secret. */
-static unsigned char client_challenge[CHALLENGE_BYTES];
-static unsigned char server_challenge[CHALLENGE_BYTES];
-static unsigned char auth_enc_nonce[MCFD_NONCE_BYTES];
+typedef struct mcfd_auth_context_t {
+	enum { AUTH_CONTEXT_PHASE1 = 0, AUTH_CONTEXT_PHASE2_CLIENT,
+		AUTH_CONTEXT_PHASE2_SERVER, AUTH_CONTEXT_DONE_CLIENT,
+		AUTH_CONTEXT_DONE_SERVER, AUTH_CONTEXT_BROKEN
+	} state;
+	unsigned char challenge_local[CHALLENGE_BYTES];
+	unsigned char challenge_remote[CHALLENGE_BYTES];
+	unsigned char private_cs[CURVE25519_PRIVATE_BYTES];
+	unsigned char private_sc[CURVE25519_PRIVATE_BYTES];
+	unsigned char public_cs[CURVE25519_PUBLIC_BYTES];
+	unsigned char public_sc[CURVE25519_PUBLIC_BYTES];
+	unsigned char half_nonce_cs_local[MCFD_NONCE_BYTES / 2];
+	unsigned char half_nonce_sc_local[MCFD_NONCE_BYTES / 2];
+	unsigned char half_nonce_cs_remote[MCFD_NONCE_BYTES / 2];
+	unsigned char half_nonce_sc_remote[MCFD_NONCE_BYTES / 2];
+} mcfd_auth_context;
+
+static void break_auth_context(mcfd_auth_context *ctx)
+{
+	explicit_bzero(ctx, sizeof(mcfd_auth_context));
+	ctx->state = AUTH_CONTEXT_BROKEN;
+}
+
+#define MCFD_AUTH_RANDOM_BYTES (CURVE25519_PRIVATE_BYTES + CURVE25519_PRIVATE_BYTES + \
+		(MCFD_NONCE_BYTES / 2) + (MCFD_NONCE_BYTES / 2) + CHALLENGE_BYTES)
+static_assert(MCFD_RANDOM_MAX >= MCFD_AUTH_RANDOM_BYTES, "MCFD_RANDOM_MAX too small");
+
+static mcfd_auth_context *mcfd_auth_init(const unsigned char *random_in)
+{
+	assert(random_in != NULL);
+
+	mcfd_auth_context *ctx = malloc(sizeof(mcfd_auth_context));
+	if (ctx == NULL) {
+		return NULL;
+	}
+
+	ctx->state = AUTH_CONTEXT_PHASE1;
+
+	const unsigned char *random_cur = random_in;
+
+	memcpy(ctx->challenge_local, random_cur, CHALLENGE_BYTES);
+	random_cur += CHALLENGE_BYTES;
+
+	/* Create local private keys. */
+	memcpy(ctx->private_cs, random_cur, CURVE25519_PRIVATE_BYTES);
+	random_cur += CURVE25519_PRIVATE_BYTES;
+	curve25519_clamp(ctx->private_cs);
+
+	memcpy(ctx->private_sc, random_cur, CURVE25519_PRIVATE_BYTES);
+	random_cur += CURVE25519_PRIVATE_BYTES;
+	curve25519_clamp(ctx->private_sc);
+
+	/* Create local half nonces. */
+	memcpy(ctx->half_nonce_cs_local, random_cur, MCFD_NONCE_BYTES / 2);
+	random_cur += MCFD_NONCE_BYTES / 2;
+
+	memcpy(ctx->half_nonce_sc_local, random_cur, MCFD_NONCE_BYTES / 2);
+	random_cur += MCFD_NONCE_BYTES / 2;
+
+	return ctx;
+}
+
+static void mcfd_auth_free(mcfd_auth_context *ctx)
+{
+	assert(ctx != NULL);
+
+	if (ctx->state != AUTH_CONTEXT_BROKEN) {
+		break_auth_context(ctx);
+	}
+
+	free(ctx);
+}
 
 struct auth_msg_t {
 	unsigned char challenge1[CHALLENGE_BYTES];
@@ -29,36 +100,283 @@ struct auth_msg_t {
 	unsigned char half_nonce_sc[MCFD_NONCE_BYTES / 2];
 } __attribute__((packed));
 
-static unsigned char private_cs[CURVE25519_PRIVATE_BYTES];
-static unsigned char private_sc[CURVE25519_PRIVATE_BYTES];
-static unsigned char shared_cs[CURVE25519_SHARED_BYTES];
-static unsigned char shared_sc[CURVE25519_SHARED_BYTES];
+#define MCFD_AUTH_PHASE1_SERVER_OUT_BYTES CHALLENGE_BYTES
 
-static struct auth_msg_t auth_msg;
-static_assert(MCFD_NET_CRYPT_BUF_SIZE >= sizeof(auth_msg),
-		"MCFD_NET_CRYPT_BUF_SIZE too small");
+static int mcfd_auth_phase1_server(mcfd_auth_context *ctx, unsigned char *out)
+{
+	if (ctx == NULL || out == NULL) {
+		return 1;
+	}
+
+	if (ctx->state != AUTH_CONTEXT_PHASE1) {
+		return 1;
+	}
+
+	memcpy(out, ctx->challenge_local, CHALLENGE_BYTES);
+
+	ctx->state = AUTH_CONTEXT_PHASE2_SERVER;
+
+	return 0;
+}
+
+#define MCFD_AUTH_PHASE2_SERVER_IN_BYTES (sizeof(struct auth_msg_t) + MCFD_TAG_BYTES)
+#define MCFD_AUTH_PHASE2_SERVER_OUT_BYTES (sizeof(struct auth_msg_t) + MCFD_TAG_BYTES)
+
+static int mcfd_auth_phase2_server(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
+		unsigned char *in, unsigned char *out)
+{
+	if (ctx == NULL || c_auth == NULL || in == NULL || out == NULL) {
+		return 1;
+	}
+
+	if (ctx->state != AUTH_CONTEXT_PHASE2_SERVER) {
+		return 1;
+	}
+
+	struct auth_msg_t *auth_msg = calloc(1, sizeof(struct auth_msg_t));
+	if (auth_msg == NULL) {
+		return 1;
+	}
+
+	if (mcfd_cipher_decrypt(c_auth, in, sizeof(struct auth_msg_t),
+				in + sizeof(struct auth_msg_t),
+				(unsigned char *) auth_msg) != 0) {
+		goto fail;
+	}
+
+	if (timingsafe_bcmp(ctx->challenge_local, auth_msg->challenge2, CHALLENGE_BYTES)
+			!= 0) {
+		goto fail;
+	}
+
+	/* Store remote public keys. */
+	memcpy(ctx->public_cs, auth_msg->half_key_cs, CURVE25519_PUBLIC_BYTES);
+	memcpy(ctx->public_sc, auth_msg->half_key_sc, CURVE25519_PUBLIC_BYTES);
+
+	/* Store remote half nonces. */
+	memcpy(ctx->half_nonce_cs_remote, auth_msg->half_nonce_cs, MCFD_NONCE_BYTES / 2);
+	memcpy(ctx->half_nonce_sc_remote, auth_msg->half_nonce_sc, MCFD_NONCE_BYTES / 2);
+
+	/* Store remote challenge. */
+	memcpy(ctx->challenge_remote, auth_msg->challenge1, CHALLENGE_BYTES);
+
+	memcpy(auth_msg->challenge1, ctx->challenge_local, CHALLENGE_BYTES);
+	memcpy(auth_msg->challenge2, ctx->challenge_remote, CHALLENGE_BYTES);
+	curve25519_public(ctx->private_cs, auth_msg->half_key_cs);
+	curve25519_public(ctx->private_sc, auth_msg->half_key_sc);
+	memcpy(auth_msg->half_nonce_cs, ctx->half_nonce_cs_local, MCFD_NONCE_BYTES / 2);
+	memcpy(auth_msg->half_nonce_sc, ctx->half_nonce_sc_local, MCFD_NONCE_BYTES / 2);
+
+	if (mcfd_cipher_encrypt(c_auth, (unsigned char *) auth_msg,
+				sizeof(struct auth_msg_t), out,
+				out + sizeof(struct auth_msg_t)) != 0) {
+		goto fail;
+	}
+
+	explicit_bzero(auth_msg, sizeof(struct auth_msg_t));
+	free(auth_msg);
+
+	ctx->state = AUTH_CONTEXT_DONE_SERVER;
+
+	return 0;
+
+fail:
+	break_auth_context(ctx);
+
+	explicit_bzero(auth_msg, sizeof(struct auth_msg_t));
+	free(auth_msg);
+
+	return 1;
+}
+
+#define MCFD_AUTH_PHASE1_CLIENT_IN_BYTES CHALLENGE_BYTES
+#define MCFD_AUTH_PHASE1_CLIENT_OUT_BYTES (sizeof(struct auth_msg_t) + MCFD_TAG_BYTES)
+
+static int mcfd_auth_phase1_client(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
+		unsigned char *in, unsigned char *out)
+{
+	if (ctx == NULL || c_auth == NULL || in == NULL || out == NULL) {
+		return 1;
+	}
+
+	if (ctx->state != AUTH_CONTEXT_PHASE1) {
+		return 1;
+	}
+
+	struct auth_msg_t *auth_msg = calloc(1, sizeof(struct auth_msg_t));
+	if (auth_msg == NULL) {
+		return 1;
+	}
+
+	/* Store remote challenge. */
+	memcpy(ctx->challenge_remote, in, CHALLENGE_BYTES);
+
+	memcpy(auth_msg->challenge1, ctx->challenge_local, CHALLENGE_BYTES);
+	memcpy(auth_msg->challenge2, ctx->challenge_remote, CHALLENGE_BYTES);
+	curve25519_public(ctx->private_cs, auth_msg->half_key_cs);
+	curve25519_public(ctx->private_sc, auth_msg->half_key_sc);
+	memcpy(auth_msg->half_nonce_cs, ctx->half_nonce_cs_local, MCFD_NONCE_BYTES / 2);
+	memcpy(auth_msg->half_nonce_sc, ctx->half_nonce_sc_local, MCFD_NONCE_BYTES / 2);
+
+	if (mcfd_cipher_encrypt(c_auth, (unsigned char *) auth_msg,
+				sizeof(struct auth_msg_t), out,
+				out + sizeof(struct auth_msg_t)) != 0) {
+		break_auth_context(ctx);
+		explicit_bzero(auth_msg, sizeof(struct auth_msg_t));
+		free(auth_msg);
+		return 1;
+	}
+
+	explicit_bzero(auth_msg, sizeof(struct auth_msg_t));
+	free(auth_msg);
+
+	ctx->state = AUTH_CONTEXT_PHASE2_CLIENT;
+
+	return 0;
+}
+
+#define MCFD_AUTH_PHASE2_CLIENT_IN_BYTES (sizeof(struct auth_msg_t) + MCFD_TAG_BYTES)
+
+static int mcfd_auth_phase2_client(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
+		unsigned char *in)
+{
+	if (ctx == NULL || c_auth == NULL || in == NULL) {
+		return 1;
+	}
+
+	if (ctx->state != AUTH_CONTEXT_PHASE2_CLIENT) {
+		return 1;
+	}
+
+	struct auth_msg_t *auth_msg = calloc(1, sizeof(struct auth_msg_t));
+	if (auth_msg == NULL) {
+		return 1;
+	}
+
+	if (mcfd_cipher_decrypt(c_auth, in, sizeof(struct auth_msg_t),
+				in + sizeof(struct auth_msg_t),
+				(unsigned char *) auth_msg) != 0) {
+		goto fail;
+	}
+
+	if (timingsafe_bcmp(ctx->challenge_local, auth_msg->challenge2, CHALLENGE_BYTES)
+			!= 0) {
+		goto fail;
+	}
+
+	if (timingsafe_bcmp(ctx->challenge_remote, auth_msg->challenge1, CHALLENGE_BYTES)
+			!= 0) {
+		goto fail;
+	}
+
+	/* Store remote public keys. */
+	memcpy(ctx->public_cs, auth_msg->half_key_cs, CURVE25519_PUBLIC_BYTES);
+	memcpy(ctx->public_sc, auth_msg->half_key_sc, CURVE25519_PUBLIC_BYTES);
+
+	/* Store remote half nonces. */
+	memcpy(ctx->half_nonce_cs_remote, auth_msg->half_nonce_cs, MCFD_NONCE_BYTES / 2);
+	memcpy(ctx->half_nonce_sc_remote, auth_msg->half_nonce_sc, MCFD_NONCE_BYTES / 2);
+
+	explicit_bzero(auth_msg, sizeof(struct auth_msg_t));
+	free(auth_msg);
+
+	ctx->state = AUTH_CONTEXT_DONE_CLIENT;
+
+	return 0;
+
+fail:
+	break_auth_context(ctx);
+
+	explicit_bzero(auth_msg, sizeof(struct auth_msg_t));
+	free(auth_msg);
+
+	return 1;
+}
+
+static int mcfd_auth_finish(mcfd_auth_context *ctx, unsigned char *key_sc,
+		unsigned char *key_cs, unsigned char *nonce_sc,
+		unsigned char *nonce_cs)
+{
+	if (ctx == NULL || key_sc == NULL || key_cs == NULL || nonce_sc == NULL ||
+			nonce_cs == NULL) {
+		return 1;
+	}
+
+	if (ctx->state != AUTH_CONTEXT_DONE_SERVER &&
+			ctx->state != AUTH_CONTEXT_DONE_CLIENT) {
+		return 1;
+	}
+
+	unsigned char *shared = malloc(CURVE25519_SHARED_BYTES * 2);
+	if (shared == NULL) {
+		return 1;
+	}
+
+	int ret = 1;
+
+	/* Create the shared secrets. */
+	curve25519(shared, ctx->private_sc, ctx->public_sc);
+	curve25519(shared + CURVE25519_SHARED_BYTES, ctx->private_cs, ctx->public_cs);
+
+	if (mcfd_kdf((const char *) shared, CURVE25519_SHARED_BYTES, NULL, 1,
+				key_sc, MCFD_KEY_BITS) != 0) {
+		goto fail;
+	}
+	if (mcfd_kdf((const char *) shared + CURVE25519_SHARED_BYTES,
+				CURVE25519_SHARED_BYTES, NULL, 1, key_cs, MCFD_KEY_BITS)
+			!= 0) {
+		explicit_bzero(key_sc, MCFD_KEY_BYTES);
+		goto fail;
+	}
+
+	if (ctx->state == AUTH_CONTEXT_DONE_SERVER) {
+		memcpy(nonce_sc, ctx->half_nonce_sc_local, MCFD_NONCE_BYTES / 2);
+		memcpy(nonce_cs, ctx->half_nonce_cs_local, MCFD_NONCE_BYTES / 2);
+		memcpy(nonce_sc + MCFD_NONCE_BYTES / 2, ctx->half_nonce_sc_remote,
+				MCFD_NONCE_BYTES / 2);
+		memcpy(nonce_cs + MCFD_NONCE_BYTES / 2, ctx->half_nonce_cs_remote,
+				MCFD_NONCE_BYTES / 2);
+	} else {
+		memcpy(nonce_sc, ctx->half_nonce_sc_remote, MCFD_NONCE_BYTES / 2);
+		memcpy(nonce_cs, ctx->half_nonce_cs_remote, MCFD_NONCE_BYTES / 2);
+		memcpy(nonce_sc + MCFD_NONCE_BYTES / 2, ctx->half_nonce_sc_local,
+				MCFD_NONCE_BYTES / 2);
+		memcpy(nonce_cs + MCFD_NONCE_BYTES / 2, ctx->half_nonce_cs_local,
+				MCFD_NONCE_BYTES / 2);
+	}
+
+	ret = 0;
+
+fail:
+	explicit_bzero(shared, CURVE25519_SHARED_BYTES * 2);
+	free(shared);
+
+	break_auth_context(ctx);
+
+	return ret;
+}
+
 
 static_assert(MCFD_RANDOM_MAX >= (CURVE25519_PRIVATE_BYTES + CURVE25519_PRIVATE_BYTES +
 			(MCFD_NONCE_BYTES / 2) + (MCFD_NONCE_BYTES / 2) + MCFD_NONCE_BYTES
 			+ CHALLENGE_BYTES),
 		"MCFD_RANDOM_MAX too small");
 
-static_assert(MCFD_KEY_BYTES % 2 == 0, "Odd key length");
-static_assert(MCFD_NONCE_BYTES % 2 == 0, "Odd nonce length");
-
-static void clear_temporaries(void)
-{
-	/* Destroy old partial keys and nonces. */
-	explicit_bzero(&auth_msg, sizeof(auth_msg));
-
-	/* Destroy ephemeral keys. */
-	explicit_bzero(private_cs, CURVE25519_PRIVATE_BYTES);
-	explicit_bzero(private_sc, CURVE25519_PRIVATE_BYTES);
-
-	/* Destroy shared secrets. */
-	explicit_bzero(shared_cs, CURVE25519_SHARED_BYTES);
-	explicit_bzero(shared_sc, CURVE25519_SHARED_BYTES);
-}
+#define AUTH_BUF_SIZE MCFD_AUTH_PHASE2_SERVER_IN_BYTES
+static unsigned char auth_buf[AUTH_BUF_SIZE];
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_RANDOM_BYTES, "AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE1_SERVER_OUT_BYTES,
+		"AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE2_SERVER_IN_BYTES,
+		"AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE2_SERVER_OUT_BYTES,
+		"AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE1_CLIENT_IN_BYTES,
+		"AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE1_CLIENT_OUT_BYTES,
+		"AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE2_CLIENT_IN_BYTES,
+		"AUTH_BUF_SIZE too small");
 
 /* You must not use key or nonces unless this function returns 0. */
 int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_auth, unsigned char *key_enc,
@@ -74,36 +392,28 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_auth, unsigned char *key_enc
 
 	int ret = 1;
 
-	/* Create ephemeral keys. */
-	if (mcfd_random_get(private_cs, CURVE25519_PRIVATE_BYTES) != 0) {
-		goto fail;
-	}
-	if (mcfd_random_get(private_sc, CURVE25519_PRIVATE_BYTES) != 0) {
-		goto fail;
-	}
-	curve25519_clamp(private_cs);
-	curve25519_clamp(private_sc);
-
-	/* Create first halves of nonces. */
-	if (mcfd_random_get(nonce_enc, MCFD_NONCE_BYTES / 2) != 0) {
-		goto fail;
-	}
-	if (mcfd_random_get(nonce_dec, MCFD_NONCE_BYTES / 2) != 0) {
-		goto fail;
+	if (mcfd_random_get(auth_buf, MCFD_AUTH_RANDOM_BYTES) != 0) {
+		return 1;
 	}
 
-	/* Create server challenge */
-	if (mcfd_random_get(server_challenge, CHALLENGE_BYTES) != 0) {
-		goto fail;
+	mcfd_auth_context *ctx = mcfd_auth_init(auth_buf);
+	if (ctx == NULL) {
+		explicit_bzero(auth_buf, AUTH_BUF_SIZE);
+		return 1;
 	}
 
-	/* Send challenge to client */
-	if (net_send(crypt_sock, server_challenge, CHALLENGE_BYTES) != 0) {
+	/* auth phase 1 */
+	if (mcfd_auth_phase1_server(ctx, auth_buf) != 0) {
+		goto fail;
+	}
+	if (net_send(crypt_sock, auth_buf, MCFD_AUTH_PHASE1_SERVER_OUT_BYTES)
+			!= 0) {
 		goto fail;
 	}
 
 	/* Receive nonce from client */
 	/* TODO: do a timeout here. */
+	unsigned char auth_enc_nonce[MCFD_NONCE_BYTES];
 	if (net_recv(crypt_sock, auth_enc_nonce, MCFD_NONCE_BYTES) != 0) {
 		goto fail;
 	}
@@ -112,55 +422,27 @@ int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_auth, unsigned char *key_enc
 		abort();
 	}
 
-	/* Receive client reply and check server challenge */
-	/* TODO: do a timeout here. */
-	if (recv_crypt(crypt_sock, c_auth, (unsigned char *) &auth_msg,
-				sizeof(auth_msg)) != 0) {
+	/* auth phase 2 */
+	if (net_recv(crypt_sock, auth_buf, MCFD_AUTH_PHASE2_SERVER_IN_BYTES) != 0) {
 		goto fail;
 	}
-
-	if (timingsafe_bcmp(server_challenge, auth_msg.challenge2, CHALLENGE_BYTES)
+	if (mcfd_auth_phase2_server(ctx, c_auth, auth_buf, auth_buf) != 0) {
+		goto fail;
+	}
+	if (net_send(crypt_sock, auth_buf, MCFD_AUTH_PHASE2_SERVER_OUT_BYTES)
 			!= 0) {
 		goto fail;
 	}
 
-	/* Create the shared secrets. */
-	curve25519(shared_cs, private_cs, auth_msg.half_key_cs);
-	curve25519(shared_sc, private_sc, auth_msg.half_key_sc);
-
-	/* Copy second halves of nonces. */
-	memcpy(nonce_enc + (MCFD_NONCE_BYTES / 2), auth_msg.half_nonce_sc,
-			MCFD_NONCE_BYTES / 2);
-	memcpy(nonce_dec + (MCFD_NONCE_BYTES / 2), auth_msg.half_nonce_cs,
-			MCFD_NONCE_BYTES / 2);
-
-	memcpy(client_challenge, auth_msg.challenge1, CHALLENGE_BYTES);
-	memcpy(auth_msg.challenge1, server_challenge, CHALLENGE_BYTES);
-	memcpy(auth_msg.challenge2, client_challenge, CHALLENGE_BYTES);
-	curve25519_public(private_cs, auth_msg.half_key_cs);
-	curve25519_public(private_sc, auth_msg.half_key_sc);
-	memcpy(auth_msg.half_nonce_sc, nonce_enc, MCFD_NONCE_BYTES / 2);
-	memcpy(auth_msg.half_nonce_cs, nonce_dec, MCFD_NONCE_BYTES / 2);
-
-	/* Encrypt challenges and send to client */
-	if (send_crypt(crypt_sock, c_auth, (unsigned char *) &auth_msg,
-				sizeof(auth_msg) )!= 0) {
-		goto fail;
-	}
-
-	if (mcfd_kdf((const char *) shared_sc, CURVE25519_SHARED_BYTES, NULL, 1, key_enc,
-				MCFD_KEY_BITS) != 0) {
-		goto fail;
-	}
-	if (mcfd_kdf((const char *) shared_cs, CURVE25519_SHARED_BYTES, NULL, 1, key_dec,
-				MCFD_KEY_BITS) != 0) {
+	if (mcfd_auth_finish(ctx, key_enc, key_dec, nonce_enc, nonce_dec) != 0) {
 		goto fail;
 	}
 
 	ret = 0;
 
 fail:
-	clear_temporaries();
+	explicit_bzero(auth_buf, AUTH_BUF_SIZE);
+	mcfd_auth_free(ctx);
 
 	return ret;
 }
@@ -178,26 +460,19 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_auth, unsigned char *key_enc
 	assert(nonce_dec != NULL);
 
 	int ret = 1;
+	
+	if (mcfd_random_get(auth_buf, MCFD_AUTH_RANDOM_BYTES) != 0) {
+		return 1;
+	}
 
-	/* Create ephemeral keys. */
-	if (mcfd_random_get(private_cs, CURVE25519_PRIVATE_BYTES) != 0) {
-		goto fail;
-	}
-	if (mcfd_random_get(private_sc, CURVE25519_PRIVATE_BYTES) != 0) {
-		goto fail;
-	}
-	curve25519_clamp(private_cs);
-	curve25519_clamp(private_sc);
-
-	/* Create second halves of nonces. */
-	if (mcfd_random_get(nonce_enc + MCFD_NONCE_BYTES / 2, MCFD_NONCE_BYTES / 2) != 0) {
-		goto fail;
-	}
-	if (mcfd_random_get(nonce_dec + MCFD_NONCE_BYTES / 2, MCFD_NONCE_BYTES / 2) != 0) {
-		goto fail;
+	mcfd_auth_context *ctx = mcfd_auth_init(auth_buf);
+	if (ctx == NULL) {
+		explicit_bzero(auth_buf, AUTH_BUF_SIZE);
+		return 1;
 	}
 
 	/* Create encryption nonce */
+	unsigned char auth_enc_nonce[MCFD_NONCE_BYTES];
 	if (mcfd_random_get(auth_enc_nonce, MCFD_NONCE_BYTES) != 0) {
 		goto fail;
 	}
@@ -205,75 +480,38 @@ int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_auth, unsigned char *key_enc
 		assert(0);
 		abort();
 	}
-
-	/* Create client callenge */
-	if (mcfd_random_get(client_challenge, CHALLENGE_BYTES) != 0) {
-		goto fail;
-	}
-
-	/* Receive server callenge */
-	/* TODO: do a timeout here. */
-	if (net_recv(crypt_sock, server_challenge, CHALLENGE_BYTES) != 0) {
-		goto fail;
-	}
-
-	memcpy(auth_msg.challenge1, client_challenge, CHALLENGE_BYTES);
-	memcpy(auth_msg.challenge2, server_challenge, CHALLENGE_BYTES);
-	curve25519_public(private_cs, auth_msg.half_key_cs);
-	curve25519_public(private_sc, auth_msg.half_key_sc);
-	memcpy(auth_msg.half_nonce_cs, nonce_enc + MCFD_NONCE_BYTES / 2,
-			MCFD_NONCE_BYTES / 2);
-	memcpy(auth_msg.half_nonce_sc, nonce_dec + MCFD_NONCE_BYTES / 2,
-			MCFD_NONCE_BYTES / 2);
-
 	if (net_send(crypt_sock, auth_enc_nonce, MCFD_NONCE_BYTES) != 0) {
 		goto fail;
 	}
 
-	/* Encrypt challenges and send to server */
-	if (send_crypt(crypt_sock, c_auth, (unsigned char *) &auth_msg,
-				sizeof(auth_msg) )!= 0) {
+	/* auth phase 1 */
+	if (net_recv(crypt_sock, auth_buf, MCFD_AUTH_PHASE1_CLIENT_IN_BYTES) != 0) {
+		goto fail;
+	}
+	if (mcfd_auth_phase1_client(ctx, c_auth, auth_buf, auth_buf) != 0) {
+		goto fail;
+	}
+	if (net_send(crypt_sock, auth_buf, MCFD_AUTH_PHASE1_CLIENT_OUT_BYTES) != 0) {
 		goto fail;
 	}
 
-	/* Receive server reply and check challenges */
-	/* TODO: do a timeout here. */
-	if (recv_crypt(crypt_sock, c_auth, (unsigned char *) &auth_msg,
-				sizeof(auth_msg)) != 0) {
+	/* auth phase 2 */
+	if (net_recv(crypt_sock, auth_buf, MCFD_AUTH_PHASE2_CLIENT_IN_BYTES) != 0) {
+		goto fail;
+	}
+	if (mcfd_auth_phase2_client(ctx, c_auth, auth_buf) != 0) {
 		goto fail;
 	}
 
-	if (timingsafe_bcmp(client_challenge, auth_msg.challenge2, CHALLENGE_BYTES)
-			!= 0) {
-		goto fail;
-	}
-
-	if (timingsafe_bcmp(server_challenge, auth_msg.challenge1, CHALLENGE_BYTES)
-			!= 0) {
-		goto fail;
-	}
-
-	/* Create the shared secrets. */
-	curve25519(shared_cs, private_cs, auth_msg.half_key_cs);
-	curve25519(shared_sc, private_sc, auth_msg.half_key_sc);
-
-	/* Copy first halves of nonces. */
-	memcpy(nonce_enc, auth_msg.half_nonce_cs, MCFD_NONCE_BYTES / 2);
-	memcpy(nonce_dec, auth_msg.half_nonce_sc, MCFD_NONCE_BYTES / 2);
-
-	if (mcfd_kdf((const char *) shared_cs, CURVE25519_SHARED_BYTES, NULL, 1, key_enc,
-				MCFD_KEY_BITS) != 0) {
-		goto fail;
-	}
-	if (mcfd_kdf((const char *) shared_sc, CURVE25519_SHARED_BYTES, NULL, 1, key_dec,
-				MCFD_KEY_BITS) != 0) {
+	if (mcfd_auth_finish(ctx, key_dec, key_enc, nonce_dec, nonce_enc) != 0) {
 		goto fail;
 	}
 
 	ret = 0;
 
 fail:
-	clear_temporaries();
+	explicit_bzero(auth_buf, AUTH_BUF_SIZE);
+	mcfd_auth_free(ctx);
 
 	return ret;
 }
