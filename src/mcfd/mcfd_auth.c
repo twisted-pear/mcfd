@@ -16,8 +16,6 @@
 static_assert(MCFD_KEY_BYTES % 2 == 0, "Odd key length");
 static_assert(MCFD_NONCE_BYTES % 2 == 0, "Odd nonce length");
 
-#define CHALLENGE_BYTES MCFD_TAG_BYTES
-
 typedef struct mcfd_auth_context_t {
 	enum { AUTH_CONTEXT_PHASE1 = 0, AUTH_CONTEXT_PHASE2_CLIENT,
 		AUTH_CONTEXT_PHASE2_SERVER, AUTH_CONTEXT_DONE_CLIENT,
@@ -41,13 +39,13 @@ static void break_auth_context(mcfd_auth_context *ctx)
 	ctx->state = AUTH_CONTEXT_BROKEN;
 }
 
-#define MCFD_AUTH_RANDOM_BYTES (CURVE25519_PRIVATE_BYTES + CURVE25519_PRIVATE_BYTES + \
-		(MCFD_NONCE_BYTES / 2) + (MCFD_NONCE_BYTES / 2) + CHALLENGE_BYTES)
 static_assert(MCFD_RANDOM_MAX >= MCFD_AUTH_RANDOM_BYTES, "MCFD_RANDOM_MAX too small");
 
-static mcfd_auth_context *mcfd_auth_init(const unsigned char *random_in)
+mcfd_auth_context *mcfd_auth_init(const unsigned char *random_in)
 {
-	assert(random_in != NULL);
+	if (random_in == NULL) {
+		return NULL;
+	}
 
 	mcfd_auth_context *ctx = malloc(sizeof(mcfd_auth_context));
 	if (ctx == NULL) {
@@ -80,9 +78,11 @@ static mcfd_auth_context *mcfd_auth_init(const unsigned char *random_in)
 	return ctx;
 }
 
-static void mcfd_auth_free(mcfd_auth_context *ctx)
+void mcfd_auth_free(mcfd_auth_context *ctx)
 {
-	assert(ctx != NULL);
+	if (ctx == NULL) {
+		return;
+	}
 
 	if (ctx->state != AUTH_CONTEXT_BROKEN) {
 		break_auth_context(ctx);
@@ -100,9 +100,9 @@ struct auth_msg_t {
 	unsigned char half_nonce_sc[MCFD_NONCE_BYTES / 2];
 } __attribute__((packed));
 
-#define MCFD_AUTH_PHASE1_SERVER_OUT_BYTES CHALLENGE_BYTES
+static_assert(AUTH_MSG_SIZE == sizeof(struct auth_msg_t), "AUTH_MSG_SIZE wrong");
 
-static int mcfd_auth_phase1_server(mcfd_auth_context *ctx, unsigned char *out)
+int mcfd_auth_phase1_server(mcfd_auth_context *ctx, unsigned char *out)
 {
 	if (ctx == NULL || out == NULL) {
 		return 1;
@@ -119,10 +119,7 @@ static int mcfd_auth_phase1_server(mcfd_auth_context *ctx, unsigned char *out)
 	return 0;
 }
 
-#define MCFD_AUTH_PHASE2_SERVER_IN_BYTES (sizeof(struct auth_msg_t) + MCFD_TAG_BYTES)
-#define MCFD_AUTH_PHASE2_SERVER_OUT_BYTES (sizeof(struct auth_msg_t) + MCFD_TAG_BYTES)
-
-static int mcfd_auth_phase2_server(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
+int mcfd_auth_phase2_server(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
 		unsigned char *in, unsigned char *out)
 {
 	if (ctx == NULL || c_auth == NULL || in == NULL || out == NULL) {
@@ -189,10 +186,7 @@ fail:
 	return 1;
 }
 
-#define MCFD_AUTH_PHASE1_CLIENT_IN_BYTES CHALLENGE_BYTES
-#define MCFD_AUTH_PHASE1_CLIENT_OUT_BYTES (sizeof(struct auth_msg_t) + MCFD_TAG_BYTES)
-
-static int mcfd_auth_phase1_client(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
+int mcfd_auth_phase1_client(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
 		unsigned char *in, unsigned char *out)
 {
 	if (ctx == NULL || c_auth == NULL || in == NULL || out == NULL) {
@@ -235,9 +229,7 @@ static int mcfd_auth_phase1_client(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
 	return 0;
 }
 
-#define MCFD_AUTH_PHASE2_CLIENT_IN_BYTES (sizeof(struct auth_msg_t) + MCFD_TAG_BYTES)
-
-static int mcfd_auth_phase2_client(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
+int mcfd_auth_phase2_client(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
 		unsigned char *in)
 {
 	if (ctx == NULL || c_auth == NULL || in == NULL) {
@@ -293,7 +285,7 @@ fail:
 	return 1;
 }
 
-static int mcfd_auth_finish(mcfd_auth_context *ctx, unsigned char *key_sc,
+int mcfd_auth_finish(mcfd_auth_context *ctx, unsigned char *key_sc,
 		unsigned char *key_cs, unsigned char *nonce_sc,
 		unsigned char *nonce_cs)
 {
