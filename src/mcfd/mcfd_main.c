@@ -33,6 +33,7 @@ static unsigned char key_auth[MCFD_KEY_BYTES];
 static unsigned char key_enc[MCFD_KEY_BYTES];
 static unsigned char key_dec[MCFD_KEY_BYTES];
 
+static unsigned char nonce_auth[MCFD_NONCE_BYTES];
 static unsigned char nonce_enc[MCFD_NONCE_BYTES];
 static unsigned char nonce_dec[MCFD_NONCE_BYTES];
 
@@ -44,6 +45,7 @@ void cleanup(void)
 	explicit_bzero(key_enc, MCFD_KEY_BYTES);
 	explicit_bzero(key_dec, MCFD_KEY_BYTES);
 
+	explicit_bzero(nonce_auth, MCFD_NONCE_BYTES);
 	explicit_bzero(nonce_enc, MCFD_NONCE_BYTES);
 	explicit_bzero(nonce_dec, MCFD_NONCE_BYTES);
 
@@ -98,11 +100,134 @@ enum op_mode {
 	MODE_SERVER
 };
 
+static_assert(MCFD_RANDOM_MAX >= (MCFD_AUTH_RANDOM_BYTES + MCFD_NONCE_BYTES),
+		"MCFD_RANDOM_MAX too small");
+
+#define AUTH_BUF_SIZE MCFD_AUTH_PHASE2_SERVER_IN_BYTES
+static unsigned char auth_buf[AUTH_BUF_SIZE];
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_RANDOM_BYTES, "AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE1_SERVER_OUT_BYTES,
+		"AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE2_SERVER_IN_BYTES,
+		"AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE2_SERVER_OUT_BYTES,
+		"AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE1_CLIENT_IN_BYTES,
+		"AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE1_CLIENT_OUT_BYTES,
+		"AUTH_BUF_SIZE too small");
+static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_PHASE2_CLIENT_IN_BYTES,
+		"AUTH_BUF_SIZE too small");
+
+static int authenticate_client(mcfd_auth_context *ctx, int crypt_sock,
+		mcfd_cipher *c_auth, unsigned char *key_enc, unsigned char *key_dec,
+		unsigned char *nonce_enc, unsigned char *nonce_dec)
+{
+	assert(ctx != NULL);
+
+	/* auth phase 1 */
+	if (net_recv(crypt_sock, auth_buf, MCFD_AUTH_PHASE1_CLIENT_IN_BYTES) != 0) {
+		return 1;
+	}
+	if (mcfd_auth_phase1_client(ctx, c_auth, auth_buf, auth_buf) != 0) {
+		return 1;
+	}
+	if (net_send(crypt_sock, auth_buf, MCFD_AUTH_PHASE1_CLIENT_OUT_BYTES) != 0) {
+		return 1;
+	}
+
+	/* auth phase 2 */
+	if (net_recv(crypt_sock, auth_buf, MCFD_AUTH_PHASE2_CLIENT_IN_BYTES) != 0) {
+		return 1;
+	}
+	if (mcfd_auth_phase2_client(ctx, c_auth, auth_buf) != 0) {
+		return 1;
+	}
+
+	/* Get new keys and nonces. */
+	if (mcfd_auth_finish(ctx, key_dec, key_enc, nonce_dec, nonce_enc) != 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
+static int authenticate_server(mcfd_auth_context *ctx, int crypt_sock,
+		mcfd_cipher *c_auth, unsigned char *key_enc, unsigned char *key_dec,
+		unsigned char *nonce_enc, unsigned char *nonce_dec)
+{
+	assert(ctx != NULL);
+
+	/* auth phase 1 */
+	if (mcfd_auth_phase1_server(ctx, auth_buf) != 0) {
+		return 1;
+	}
+	if (net_send(crypt_sock, auth_buf, MCFD_AUTH_PHASE1_SERVER_OUT_BYTES)
+			!= 0) {
+		return 1;
+	}
+
+	/* auth phase 2 */
+	if (net_recv(crypt_sock, auth_buf, MCFD_AUTH_PHASE2_SERVER_IN_BYTES) != 0) {
+		return 1;
+	}
+	if (mcfd_auth_phase2_server(ctx, c_auth, auth_buf, auth_buf) != 0) {
+		return 1;
+	}
+	if (net_send(crypt_sock, auth_buf, MCFD_AUTH_PHASE2_SERVER_OUT_BYTES)
+			!= 0) {
+		return 1;
+	}
+
+	/* Get new keys and nonces. */
+	if (mcfd_auth_finish(ctx, key_enc, key_dec, nonce_enc, nonce_dec) != 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
+static int authenticate(int crypt_sock, const enum op_mode mode, mcfd_cipher *c_auth,
+		unsigned char *key_enc, unsigned char *key_dec, unsigned char *nonce_enc,
+		unsigned char *nonce_dec)
+{
+	assert(crypt_sock != -1);
+	assert(c_auth != NULL);
+	assert(key_enc != NULL);
+	assert(key_dec != NULL);
+	assert(nonce_enc != NULL);
+	assert(nonce_dec != NULL);
+
+	if (mcfd_random_get(auth_buf, MCFD_AUTH_RANDOM_BYTES) != 0) {
+		return 1;
+	}
+
+	mcfd_auth_context *ctx = mcfd_auth_init(auth_buf);
+	if (ctx == NULL) {
+		explicit_bzero(auth_buf, AUTH_BUF_SIZE);
+		return 1;
+	}
+
+	int ret = 0;
+	if (mode == MODE_CLIENT) {
+		ret = authenticate_client(ctx, crypt_sock, c_auth, key_enc, key_dec,
+				nonce_enc, nonce_dec);
+	} else {
+		ret = authenticate_server(ctx, crypt_sock, c_auth, key_enc, key_dec,
+				nonce_enc, nonce_dec);
+	}
+
+	explicit_bzero(auth_buf, AUTH_BUF_SIZE);
+	mcfd_auth_free(ctx);
+
+	return ret;
+}
+
 noreturn static void handle_connection(const char *dst_addr, const char *dst_port,
 		const enum op_mode mode)
 {
 	assert(client_sock != -1);
-	assert(c_auth != NULL);
+	assert(c_auth == NULL);
 	assert(c_enc == NULL);
 	assert(c_dec == NULL);
 
@@ -127,22 +252,48 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 		}
 		crypt_sock = server_sock;
 
-		if (mcfd_auth_client(crypt_sock, c_auth, key_enc, key_dec, nonce_enc,
-					nonce_dec) != 0) {
-			print_err("auth", "failed to authenticate server");
+		if (mcfd_random_get(nonce_auth, MCFD_NONCE_BYTES) != 0) {
+			print_err("gen nonce", "failed to generate auth nonce");
 			terminate(EXIT_FAILURE);
 		}
-
+		if (net_send(crypt_sock, nonce_auth, MCFD_NONCE_BYTES) != 0) {
+			print_err("send nonce", "failed to send auth nonce");
+			terminate(EXIT_FAILURE);
+		}
 	} else {
 		crypt_sock = client_sock;
 
-		if (mcfd_auth_server(crypt_sock, c_auth, key_enc, key_dec, nonce_enc,
-					nonce_dec) != 0) {
-			print_err("auth", "failed to authenticate client");
+		if (net_recv(crypt_sock, nonce_auth, MCFD_NONCE_BYTES) != 0) {
+			print_err("recv nonce", "failed to receive auth nonce");
 			net_resolve_free(res_result);
 			terminate(EXIT_FAILURE);
 		}
+	}
 
+	block_signals();
+
+	c_auth = mcfd_cipher_init(nonce_auth, key_auth);
+
+	explicit_bzero(key_auth, MCFD_KEY_BYTES);
+	explicit_bzero(nonce_auth, MCFD_KEY_BYTES);
+
+	unblock_signals();
+
+	if (c_auth == NULL) {
+		print_err("init cipher", "failed to init auth cipher");
+		if (mode != MODE_CLIENT) {
+			net_resolve_free(res_result);
+		}
+		terminate(EXIT_FAILURE);
+	}
+
+	if (authenticate(crypt_sock, mode, c_auth, key_enc, key_dec, nonce_enc, nonce_dec)
+			!= 0) {
+		print_err("auth", "failed to authenticate");
+		if (mode != MODE_CLIENT) {
+			net_resolve_free(res_result);
+		}
+		terminate(EXIT_FAILURE);
 	}
 
 	/* We disable signals here to absolutely make sure that the old ciphers are
@@ -467,16 +618,7 @@ int main(int argc, char *const *argv)
 
 	explicit_bzero(pass, pass_len);
 
-	c_auth = mcfd_cipher_init(NULL, key_auth);
-
-	explicit_bzero(key_auth, MCFD_KEY_BYTES);
-
 	unblock_signals();
-
-	if (c_auth == NULL) {
-		print_err("init cipher", "failed to init auth cipher");
-		terminate(EXIT_FAILURE);
-	}
 
 	if (mcfd_random_init() != 0) {
 		print_err("init RNG", "failed to init RNG");

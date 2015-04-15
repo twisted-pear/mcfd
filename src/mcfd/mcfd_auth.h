@@ -7,13 +7,6 @@
 #include "curve25519.h"
 #include "mcfd_cipher.h"
 
-int mcfd_auth_server(int crypt_sock, mcfd_cipher *c_auth, unsigned char *key_enc,
-		unsigned char *key_dec, unsigned char *nonce_enc,
-		unsigned char *nonce_dec);
-int mcfd_auth_client(int crypt_sock, mcfd_cipher *c_auth, unsigned char *key_enc,
-		unsigned char *key_dec, unsigned char *nonce_enc,
-		unsigned char *nonce_dec);
-
 typedef struct mcfd_auth_context_t mcfd_auth_context;
 
 #define CHALLENGE_BYTES MCFD_TAG_BYTES
@@ -42,5 +35,9 @@ int mcfd_auth_phase1_client(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
 #define MCFD_AUTH_PHASE2_CLIENT_IN_BYTES (AUTH_MSG_SIZE + MCFD_TAG_BYTES)
 int mcfd_auth_phase2_client(mcfd_auth_context *ctx, mcfd_cipher *c_auth,
 		unsigned char *in);
+
+int mcfd_auth_finish(mcfd_auth_context *ctx, unsigned char *key_sc,
+		unsigned char *key_cs, unsigned char *nonce_sc,
+		unsigned char *nonce_cs);
 
 #endif /* __MCFD_AUTH_H__ */
