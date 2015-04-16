@@ -343,11 +343,6 @@ static void mcfd_cipher_teardown(void **state __attribute__((unused)))
 	mcfd_cipher_init_teardown(state);
 }
 
-
-static void mcfd_cipher_set_nonce_normal(void **state __attribute__((unused)))
-{
-}
-
 static void mcfd_cipher_encrypt_normal(void **state __attribute__((unused)))
 {
 }
@@ -381,15 +376,6 @@ int run_unit_tests(void)
 
 	fprintf(stderr, "mcfd_cipher_init:\n");
 	res |= run_tests(mcfd_cipher_init_tests);
-	fprintf(stderr, "\n");
-
-	const UnitTest mcfd_cipher_set_nonce_tests[] = {
-		unit_test_setup_teardown(mcfd_cipher_set_nonce_normal,
-				mcfd_cipher_setup, mcfd_cipher_teardown)
-	};
-
-	fprintf(stderr, "mcfd_cipher_set_nonce:\n");
-	res |= run_tests(mcfd_cipher_set_nonce_tests);
 	fprintf(stderr, "\n");
 
 	const UnitTest mcfd_cipher_encrypt_tests[] = {
