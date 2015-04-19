@@ -900,7 +900,7 @@ static void duplex_duplexing_diff_rates(void **state __attribute__((unused)))
 	for (rate = CREATE_MIN_RATE + 1; rate < CREATE_WIDTH; rate++) {
 		p->rate = rate;
 
-		duplex *dp = duplex_init(f, p, rate);
+		dp = duplex_init(f, p, rate);
 		assert_non_null(dp);
 		assert_true(dp->f == f);
 		assert_true(dp->p == p);
