@@ -19,6 +19,8 @@ if (CMAKE_COMPILER_IS_GNUCC)
 		"-fprofile-arcs -ftest-coverage")
 	set_source_files_properties ( ${S_CURVE25519_DONNA} PROPERTIES COMPILE_FLAGS
 		"-fprofile-arcs -ftest-coverage")
+	set_source_files_properties ( ${S_MCFD_AUTH} PROPERTIES COMPILE_FLAGS
+		"-fprofile-arcs -ftest-coverage")
 	set_source_files_properties ( ${S_MCFD_KDF} PROPERTIES COMPILE_FLAGS
 		"-fprofile-arcs -ftest-coverage")
 	set_source_files_properties ( ${S_MCFD_CIPHER} PROPERTIES COMPILE_FLAGS
@@ -72,6 +74,7 @@ add_unit_test ("duplex" "")
 add_unit_test ("spongeprg" "")
 add_unit_test ("spongewrap" "")
 
+add_unit_test ("mcfd_auth" "${S_CRYPTO_COMMON}")
 add_unit_test ("mcfd_kdf" "${S_CRYPTO_COMMON}")
 add_unit_test ("mcfd_cipher" "${S_CRYPTO_COMMON}")
 
