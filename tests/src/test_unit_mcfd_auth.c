@@ -19,6 +19,8 @@
 #define RANDOM_PATTERN 0x11
 #define PRIVKEY_PATTERN 0x22
 
+#define EMPTY_PATTERN 0xFF
+
 void curve25519_clamp(unsigned char *privkey)
 {
 	check_expected(privkey);
@@ -158,6 +160,79 @@ static void mcfd_auth_init_normal(void **state __attribute__((unused)))
 	mcfd_auth_free(ctx);
 }
 
+mcfd_auth_context *ctx;
+unsigned char *out_bytes;
+
+static void mcfd_auth_phase1_setup(void **state __attribute__((unused)))
+{
+	mcfd_auth_init_setup(state);
+
+	out_bytes = malloc(MCFD_AUTH_PHASE1_SERVER_OUT_BYTES);
+	assert_non_null(out_bytes);
+	memset(out_bytes, EMPTY_PATTERN, MCFD_AUTH_PHASE1_SERVER_OUT_BYTES);
+
+	mcfd_auth_init_success();
+
+	ctx = mcfd_auth_init(random_bytes);
+	assert_non_null(ctx);
+}
+
+static void mcfd_auth_phase1_teardown(void **state __attribute__((unused)))
+{
+	mcfd_auth_free(ctx);
+
+	free(out_bytes);
+
+	mcfd_auth_init_teardown(state);
+}
+
+static void mcfd_auth_phase1_server_ctx_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_phase1_server(NULL, out_bytes), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE1_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase1_server_out_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_phase1_server(ctx, NULL), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE1_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase1_server_normal(void **state __attribute__((unused)));
+
+static void mcfd_auth_phase1_server_wrong_phase(void **state __attribute__((unused)))
+{
+	mcfd_auth_phase1_server_normal(state);
+	memset(out_bytes, EMPTY_PATTERN, MCFD_AUTH_PHASE1_SERVER_OUT_BYTES);
+
+	assert_int_equal(mcfd_auth_phase1_server(ctx, out_bytes), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE1_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase1_server_normal(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_phase1_server(ctx, out_bytes), 0);
+
+	/* TODO: test if phase 2 accepts ctx */
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE1_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], RANDOM_PATTERN);
+	}
+}
+
 int run_unit_tests(void)
 {
 	int res = 0;
@@ -175,6 +250,21 @@ int run_unit_tests(void)
 
 	fprintf(stderr, "mcfd_auth_init:\n");
 	res |= run_tests(mcfd_auth_init_tests);
+	fprintf(stderr, "\n");
+
+	const UnitTest mcfd_auth_phase1_server_tests[] = {
+		unit_test_setup_teardown(mcfd_auth_phase1_server_ctx_null,
+				mcfd_auth_phase1_setup, mcfd_auth_phase1_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase1_server_out_null,
+				mcfd_auth_phase1_setup, mcfd_auth_phase1_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase1_server_wrong_phase,
+				mcfd_auth_phase1_setup, mcfd_auth_phase1_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase1_server_normal,
+				mcfd_auth_phase1_setup, mcfd_auth_phase1_teardown)
+	};
+
+	fprintf(stderr, "mcfd_auth_phase1_server:\n");
+	res |= run_tests(mcfd_auth_phase1_server_tests);
 	fprintf(stderr, "\n");
 
 	return res;
