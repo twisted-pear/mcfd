@@ -23,6 +23,8 @@
 #define ENC_PATTERN 0x44
 #define PUBKEY_PATTERN 0x55
 #define FAIL_PATTERN 0x66
+#define SHARED_PATTERN 0x77
+#define KEY_PATTERN 0x88
 
 #define EMPTY_PATTERN 0xFF
 
@@ -64,6 +66,16 @@ void curve25519(unsigned char *shared, const unsigned char *my_privkey,
 	check_expected(shared);
 	check_expected(my_privkey);
 	check_expected(their_pubkey);
+
+	size_t i;
+	for (i = 0; i < CURVE25519_PRIVATE_BYTES; i++) {
+		assert_int_equal(my_privkey[i], PRIVKEY_PATTERN);
+	}
+	for (i = 0; i < CURVE25519_PUBLIC_BYTES; i++) {
+		assert_int_equal(their_pubkey[i], RANDOM_PATTERN);
+	}
+
+	memset(shared, SHARED_PATTERN, CURVE25519_SHARED_BYTES);
 }
 
 int mcfd_cipher_encrypt(mcfd_cipher *cipher, const unsigned char *plaintext,
@@ -114,14 +126,28 @@ int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
 	return ret;
 }
 
-int mcfd_kdf(const char *pass __attribute__((unused)),
-		const size_t pass_len __attribute__((unused)),
-		const unsigned char *salt __attribute__((unused)),
-		const size_t iterations __attribute__((unused)),
-		unsigned char *key __attribute__((unused)),
-		const size_t key_bits __attribute__((unused)))
+int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
+		const size_t iterations, unsigned char *key, const size_t key_bits)
 {
-	return 0;
+	check_expected(pass);
+	check_expected(pass_len);
+	check_expected(salt);
+	check_expected(iterations);
+	check_expected(key);
+	check_expected(key_bits);
+
+	size_t i;
+	for (i = 0; i < CURVE25519_SHARED_BYTES; i++) {
+		assert_int_equal(pass[i], SHARED_PATTERN);
+	}
+
+	int ret = mock_type(int);
+
+	if (ret == 0) {
+		memset(key, KEY_PATTERN, (key_bits + 7) / 8);
+	}
+
+	return ret;
 }
 
 static unsigned char random_bytes[MCFD_AUTH_RANDOM_BYTES];
@@ -473,8 +499,6 @@ static void mcfd_auth_phase1_client_normal(void **state __attribute__((unused)))
 	mcfd_auth_phase1_client_success();
 
 	assert_int_equal(mcfd_auth_phase1_client(ctx, c_auth, in_bytes, out_bytes), 0);
-
-	/* TODO: test if phase 2 accepts ctx */
 
 	size_t i;
 	for (i = 0; i < MCFD_AUTH_PHASE1_CLIENT_OUT_BYTES; i++) {
@@ -894,6 +918,344 @@ static void mcfd_auth_phase2_client_normal(void **state __attribute__((unused)))
 	assert_int_equal(mcfd_auth_phase2_client(ctx, c_auth, in_bytes), 0);
 }
 
+unsigned char *key_sc;
+unsigned char *key_cs;
+unsigned char *nonce_sc;
+unsigned char *nonce_cs;
+
+static void mcfd_auth_finish_setup(void **state __attribute__((unused)))
+{
+	mcfd_auth_phase2_srv_setup(state);
+	mcfd_auth_phase2_server_normal(state);
+
+	key_sc = malloc(MCFD_KEY_BYTES);
+	assert_non_null(key_sc);
+	memset(key_sc, EMPTY_PATTERN, MCFD_KEY_BYTES);
+
+	key_cs = malloc(MCFD_KEY_BYTES);
+	assert_non_null(key_cs);
+	memset(key_cs, EMPTY_PATTERN, MCFD_KEY_BYTES);
+
+	nonce_sc = malloc(MCFD_NONCE_BYTES);
+	assert_non_null(nonce_sc);
+	memset(nonce_sc, EMPTY_PATTERN, MCFD_NONCE_BYTES);
+
+	nonce_cs = malloc(MCFD_NONCE_BYTES);
+	assert_non_null(nonce_cs);
+	memset(nonce_cs, EMPTY_PATTERN, MCFD_NONCE_BYTES);
+}
+
+static void mcfd_auth_finish_teardown(void **state __attribute__((unused)))
+{
+	free(key_sc);
+	free(key_cs);
+	free(nonce_sc);
+	free(nonce_cs);
+
+	mcfd_auth_phase2_srv_teardown(state);
+}
+
+static void mcfd_auth_finish_success(void)
+{
+	expect_any_count(curve25519, shared, 2);
+	expect_any_count(curve25519, my_privkey, 2);
+	expect_any_count(curve25519, their_pubkey, 2);
+
+	expect_any_count(mcfd_kdf, pass, 2);
+	expect_value_count(mcfd_kdf, pass_len, CURVE25519_SHARED_BYTES, 2);
+	expect_value_count(mcfd_kdf, salt, NULL, 2);
+	expect_value_count(mcfd_kdf, iterations, 1, 2);
+	expect_value(mcfd_kdf, key, key_sc);
+	expect_value(mcfd_kdf, key, key_cs);
+	expect_value_count(mcfd_kdf, key_bits, MCFD_KEY_BITS, 2);
+	will_return_count(mcfd_kdf, 0, 2);
+}
+
+static void mcfd_auth_finish_ctx_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_finish(NULL, key_sc, key_cs, nonce_sc, nonce_cs), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], EMPTY_PATTERN);
+		assert_int_equal(key_cs[i], EMPTY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], EMPTY_PATTERN);
+		assert_int_equal(nonce_cs[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_key1_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_finish(ctx, NULL, key_cs, nonce_sc, nonce_cs), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], EMPTY_PATTERN);
+		assert_int_equal(key_cs[i], EMPTY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], EMPTY_PATTERN);
+		assert_int_equal(nonce_cs[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_key2_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_finish(ctx, key_sc, NULL, nonce_sc, nonce_cs), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], EMPTY_PATTERN);
+		assert_int_equal(key_cs[i], EMPTY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], EMPTY_PATTERN);
+		assert_int_equal(nonce_cs[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_nonce1_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_finish(ctx, key_sc, key_cs, NULL, nonce_cs), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], EMPTY_PATTERN);
+		assert_int_equal(key_cs[i], EMPTY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], EMPTY_PATTERN);
+		assert_int_equal(nonce_cs[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_nonce2_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_finish(ctx, key_sc, key_cs, nonce_sc, NULL), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], EMPTY_PATTERN);
+		assert_int_equal(key_cs[i], EMPTY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], EMPTY_PATTERN);
+		assert_int_equal(nonce_cs[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_noalloc(void **state __attribute__((unused)))
+{
+	/* mcfd_auth_finish has to allocate at least some memory */
+
+	expect_any_count(__wrap_alloc, nmemb, -1);
+	expect_any_count(__wrap_alloc, size, -1);
+	will_return_count(__wrap_alloc, NULL, -1);
+
+	__activate_wrap_alloc = 1;
+
+	int ret = mcfd_auth_finish(ctx, key_sc, key_cs, nonce_sc, nonce_cs);
+
+	__activate_wrap_alloc = 0;
+
+	assert_int_equal(ret, 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], EMPTY_PATTERN);
+		assert_int_equal(key_cs[i], EMPTY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], EMPTY_PATTERN);
+		assert_int_equal(nonce_cs[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_alloc_limited(void **state __attribute__((unused)))
+{
+	mcfd_auth_finish_success();
+
+	expect_any_count(__wrap_alloc, nmemb, -1);
+	expect_any_count(__wrap_alloc, size, -1);
+
+	int ret = 1;
+
+	size_t i;
+	for (i = 1; i <= CREATE_MAX_ALLOCS; i++) {
+		will_return_count(__wrap_alloc, __WRAP_ALLOC_NEW, i);
+		will_return_count(__wrap_alloc, NULL, 1);
+
+		__activate_wrap_alloc = 1;
+
+		ret = mcfd_auth_finish(ctx, key_sc, key_cs, nonce_sc, nonce_cs);
+		if (ret == 0) {
+			break;
+		}
+
+		__activate_wrap_alloc = 0;
+	}
+
+	assert_null(__wrap_alloc(0, 1, ALLOC_MALLOC));
+	__activate_wrap_alloc = 0;
+	assert_in_range(i, 1, CREATE_MAX_ALLOCS);
+
+	assert_int_equal(ret, 0);
+
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], KEY_PATTERN);
+		assert_int_equal(key_cs[i], KEY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], RANDOM_PATTERN);
+		assert_int_equal(nonce_cs[i], RANDOM_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_kdf1_fail(void **state __attribute__((unused)))
+{
+	expect_any_count(curve25519, shared, 2);
+	expect_any_count(curve25519, my_privkey, 2);
+	expect_any_count(curve25519, their_pubkey, 2);
+
+	expect_any(mcfd_kdf, pass);
+	expect_value(mcfd_kdf, pass_len, CURVE25519_SHARED_BYTES);
+	expect_value(mcfd_kdf, salt, NULL);
+	expect_value(mcfd_kdf, iterations, 1);
+	expect_value(mcfd_kdf, key, key_sc);
+	expect_value(mcfd_kdf, key_bits, MCFD_KEY_BITS);
+	will_return(mcfd_kdf, 1);
+
+	assert_int_equal(mcfd_auth_finish(ctx, key_sc, key_cs, nonce_sc, nonce_cs), 1);
+
+	assert_int_equal(mcfd_auth_finish(ctx, key_sc, key_cs, nonce_sc, nonce_cs), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], EMPTY_PATTERN);
+		assert_int_equal(key_cs[i], EMPTY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], EMPTY_PATTERN);
+		assert_int_equal(nonce_cs[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_kdf2_fail(void **state __attribute__((unused)))
+{
+	expect_any_count(curve25519, shared, 2);
+	expect_any_count(curve25519, my_privkey, 2);
+	expect_any_count(curve25519, their_pubkey, 2);
+
+	expect_any_count(mcfd_kdf, pass, 2);
+	expect_value_count(mcfd_kdf, pass_len, CURVE25519_SHARED_BYTES, 2);
+	expect_value_count(mcfd_kdf, salt, NULL, 2);
+	expect_value_count(mcfd_kdf, iterations, 1, 2);
+	expect_value(mcfd_kdf, key, key_sc);
+	expect_value(mcfd_kdf, key, key_cs);
+	expect_value_count(mcfd_kdf, key_bits, MCFD_KEY_BITS, 2);
+	will_return(mcfd_kdf, 0);
+	will_return(mcfd_kdf, 1);
+
+	assert_int_equal(mcfd_auth_finish(ctx, key_sc, key_cs, nonce_sc, nonce_cs), 1);
+
+	assert_int_equal(mcfd_auth_finish(ctx, key_sc, key_cs, nonce_sc, nonce_cs), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], 0x00);
+	}
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_cs[i], EMPTY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], EMPTY_PATTERN);
+		assert_int_equal(nonce_cs[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_normal_server(void **state __attribute__((unused)));
+
+static void mcfd_auth_finish_wrong_phase(void **state __attribute__((unused)))
+{
+	mcfd_auth_finish_normal_server(state);
+
+	memset(key_sc, EMPTY_PATTERN, MCFD_KEY_BYTES);
+	memset(key_cs, EMPTY_PATTERN, MCFD_KEY_BYTES);
+	memset(nonce_sc, EMPTY_PATTERN, MCFD_NONCE_BYTES);
+	memset(nonce_cs, EMPTY_PATTERN, MCFD_NONCE_BYTES);
+
+	assert_int_equal(mcfd_auth_finish(ctx, key_sc, key_cs, nonce_sc, nonce_cs), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], EMPTY_PATTERN);
+		assert_int_equal(key_cs[i], EMPTY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], EMPTY_PATTERN);
+		assert_int_equal(nonce_cs[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_normal_server(void **state __attribute__((unused)))
+{
+	mcfd_auth_finish_success();
+
+	assert_int_equal(mcfd_auth_finish(ctx, key_sc, key_cs, nonce_sc, nonce_cs), 0);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], KEY_PATTERN);
+		assert_int_equal(key_cs[i], KEY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], RANDOM_PATTERN);
+		assert_int_equal(nonce_cs[i], RANDOM_PATTERN);
+	}
+}
+
+static void mcfd_auth_finish_normal_client(void **state __attribute__((unused)))
+{
+	mcfd_auth_phase2_client_normal(state);
+
+	key_sc = malloc(MCFD_KEY_BYTES);
+	assert_non_null(key_sc);
+	memset(key_sc, EMPTY_PATTERN, MCFD_KEY_BYTES);
+
+	key_cs = malloc(MCFD_KEY_BYTES);
+	assert_non_null(key_cs);
+	memset(key_cs, EMPTY_PATTERN, MCFD_KEY_BYTES);
+
+	nonce_sc = malloc(MCFD_NONCE_BYTES);
+	assert_non_null(nonce_sc);
+	memset(nonce_sc, EMPTY_PATTERN, MCFD_NONCE_BYTES);
+
+	nonce_cs = malloc(MCFD_NONCE_BYTES);
+	assert_non_null(nonce_cs);
+	memset(nonce_cs, EMPTY_PATTERN, MCFD_NONCE_BYTES);
+
+	mcfd_auth_finish_success();
+
+	assert_int_equal(mcfd_auth_finish(ctx, key_sc, key_cs, nonce_sc, nonce_cs), 0);
+
+	size_t i;
+	for (i = 0; i < MCFD_KEY_BYTES; i++) {
+		assert_int_equal(key_sc[i], KEY_PATTERN);
+		assert_int_equal(key_cs[i], KEY_PATTERN);
+	}
+	for (i = 0; i < MCFD_NONCE_BYTES; i++) {
+		assert_int_equal(nonce_sc[i], RANDOM_PATTERN);
+		assert_int_equal(nonce_cs[i], RANDOM_PATTERN);
+	}
+
+	free(key_sc);
+	free(key_cs);
+	free(nonce_sc);
+	free(nonce_cs);
+}
+
 int run_unit_tests(void)
 {
 	int res = 0;
@@ -1005,6 +1367,37 @@ int run_unit_tests(void)
 
 	fprintf(stderr, "mcfd_auth_phase2_client:\n");
 	res |= run_tests(mcfd_auth_phase2_client_tests);
+	fprintf(stderr, "\n");
+
+	const UnitTest mcfd_auth_finish_tests[] = {
+		unit_test_setup_teardown(mcfd_auth_finish_ctx_null,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_key1_null,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_key2_null,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_nonce1_null,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_nonce2_null,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_noalloc,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_alloc_limited,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_kdf1_fail,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_kdf2_fail,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_wrong_phase,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_normal_server,
+				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
+		unit_test_setup_teardown(mcfd_auth_finish_normal_client,
+				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown)
+	};
+
+	fprintf(stderr, "mcfd_auth_finish:\n");
+	res |= run_tests(mcfd_auth_finish_tests);
 	fprintf(stderr, "\n");
 
 	return res;
