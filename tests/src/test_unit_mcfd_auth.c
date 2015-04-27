@@ -22,6 +22,7 @@
 #define IN_PATTERN 0x33
 #define ENC_PATTERN 0x44
 #define PUBKEY_PATTERN 0x55
+#define FAIL_PATTERN 0x66
 
 #define EMPTY_PATTERN 0xFF
 
@@ -101,7 +102,16 @@ int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
 	assert_int_equal(cipher->val, VAL_DEC);
 	cipher->val = VAL_ENC;
 
-	return mock_type(int);
+	int ret = mock_type(int);
+
+	if (ret == 0) {
+		memset(plaintext, RANDOM_PATTERN, ciphertext_bytes);
+	} else if (ret == FAIL_PATTERN) {
+		memset(plaintext, FAIL_PATTERN, ciphertext_bytes);
+		ret = 0;
+	}
+
+	return ret;
 }
 
 int mcfd_kdf(const char *pass __attribute__((unused)),
@@ -264,8 +274,6 @@ static void mcfd_auth_phase1_server_normal(void **state __attribute__((unused)))
 {
 	assert_int_equal(mcfd_auth_phase1_server(ctx, out_bytes), 0);
 
-	/* TODO: test if phase 2 accepts ctx */
-
 	size_t i;
 	for (i = 0; i < MCFD_AUTH_PHASE1_SERVER_OUT_BYTES; i++) {
 		assert_int_equal(out_bytes[i], RANDOM_PATTERN);
@@ -417,6 +425,10 @@ static void mcfd_auth_phase1_client_alloc_limited(void **state __attribute__((un
 	assert_in_range(i, 1, CREATE_MAX_ALLOCS);
 
 	assert_int_equal(ret, 0);
+
+	for (i = 0; i < MCFD_AUTH_PHASE1_CLIENT_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], ENC_PATTERN);
+	}
 }
 
 static void mcfd_auth_phase1_client_encrypt_fail(void **state __attribute__((unused)))
@@ -466,6 +478,258 @@ static void mcfd_auth_phase1_client_normal(void **state __attribute__((unused)))
 
 	size_t i;
 	for (i = 0; i < MCFD_AUTH_PHASE1_CLIENT_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], ENC_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_srv_setup(void **state __attribute__((unused)))
+{
+	mcfd_auth_init_setup(state);
+
+	c_auth = malloc(sizeof(struct mcfd_cipher_t));
+	assert_non_null(c_auth);
+	c_auth->val = VAL_DEC;
+
+	in_bytes = malloc(MCFD_AUTH_PHASE2_SERVER_IN_BYTES);
+	assert_non_null(in_bytes);
+	memset(in_bytes, IN_PATTERN, MCFD_AUTH_PHASE2_SERVER_IN_BYTES);
+
+	out_bytes = malloc(MCFD_AUTH_PHASE2_SERVER_OUT_BYTES);
+	assert_non_null(out_bytes);
+	memset(out_bytes, EMPTY_PATTERN, MCFD_AUTH_PHASE2_SERVER_OUT_BYTES);
+
+	mcfd_auth_init_success();
+
+	ctx = mcfd_auth_init(random_bytes);
+	assert_non_null(ctx);
+
+	mcfd_auth_phase1_server_normal(state);
+	memset(out_bytes, EMPTY_PATTERN, MCFD_AUTH_PHASE2_SERVER_OUT_BYTES);
+}
+
+static void mcfd_auth_phase2_srv_teardown(void **state __attribute__((unused)))
+{
+	mcfd_auth_free(ctx);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE1_CLIENT_IN_BYTES; i++) {
+		assert_int_equal(in_bytes[i], IN_PATTERN);
+	}
+
+	free(c_auth);
+	free(in_bytes);
+	free(out_bytes);
+
+	mcfd_auth_init_teardown(state);
+}
+
+static void mcfd_auth_phase2_server_success(void)
+{
+	expect_value(mcfd_cipher_decrypt, cipher, c_auth);
+	expect_value(mcfd_cipher_decrypt, ciphertext, in_bytes);
+	expect_value(mcfd_cipher_decrypt, ciphertext_bytes, AUTH_MSG_SIZE);
+	expect_value(mcfd_cipher_decrypt, tag, in_bytes + AUTH_MSG_SIZE);
+	expect_any(mcfd_cipher_decrypt, plaintext);
+	will_return(mcfd_cipher_decrypt, 0);
+
+	expect_any_count(curve25519_public, privkey, 2);
+	expect_any_count(curve25519_public, pubkey, 2);
+
+	expect_value(mcfd_cipher_encrypt, cipher, c_auth);
+	expect_any(mcfd_cipher_encrypt, plaintext);
+	expect_value(mcfd_cipher_encrypt, plaintext_bytes, AUTH_MSG_SIZE);
+	expect_value(mcfd_cipher_encrypt, ciphertext, out_bytes);
+	expect_value(mcfd_cipher_encrypt, tag, out_bytes + AUTH_MSG_SIZE);
+	will_return(mcfd_cipher_encrypt, 0);
+}
+
+static void mcfd_auth_phase2_server_ctx_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_phase2_server(NULL, c_auth, in_bytes, out_bytes), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_server_cauth_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_phase2_server(ctx, NULL, in_bytes, out_bytes), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_server_in_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_phase2_server(ctx, c_auth, NULL, out_bytes), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_server_out_null(void **state __attribute__((unused)))
+{
+	assert_int_equal(mcfd_auth_phase2_server(ctx, c_auth, in_bytes, NULL), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_server_noalloc(void **state __attribute__((unused)))
+{
+	/* mcfd_auth_phase2_server has to allocate at least some memory */
+
+	expect_any_count(__wrap_alloc, nmemb, -1);
+	expect_any_count(__wrap_alloc, size, -1);
+	will_return_count(__wrap_alloc, NULL, -1);
+
+	__activate_wrap_alloc = 1;
+
+	int ret = mcfd_auth_phase2_server(ctx, c_auth, in_bytes, out_bytes);
+
+	__activate_wrap_alloc = 0;
+
+	assert_int_equal(ret, 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_server_alloc_limited(void **state __attribute__((unused)))
+{
+	mcfd_auth_phase2_server_success();
+
+	expect_any_count(__wrap_alloc, nmemb, -1);
+	expect_any_count(__wrap_alloc, size, -1);
+
+	int ret = 1;
+
+	size_t i;
+	for (i = 1; i <= CREATE_MAX_ALLOCS; i++) {
+		will_return_count(__wrap_alloc, __WRAP_ALLOC_NEW, i);
+		will_return_count(__wrap_alloc, NULL, 1);
+
+		__activate_wrap_alloc = 1;
+
+		ret = mcfd_auth_phase2_server(ctx, c_auth, in_bytes, out_bytes);
+		if (ret == 0) {
+			break;
+		}
+
+		__activate_wrap_alloc = 0;
+	}
+
+	assert_null(__wrap_alloc(0, 1, ALLOC_MALLOC));
+	__activate_wrap_alloc = 0;
+	assert_in_range(i, 1, CREATE_MAX_ALLOCS);
+
+	assert_int_equal(ret, 0);
+
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], ENC_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_server_challenge_fail(void **state __attribute__((unused)))
+{
+	expect_value(mcfd_cipher_decrypt, cipher, c_auth);
+	expect_value(mcfd_cipher_decrypt, ciphertext, in_bytes);
+	expect_value(mcfd_cipher_decrypt, ciphertext_bytes, AUTH_MSG_SIZE);
+	expect_value(mcfd_cipher_decrypt, tag, in_bytes + AUTH_MSG_SIZE);
+	expect_any(mcfd_cipher_decrypt, plaintext);
+	will_return(mcfd_cipher_decrypt, FAIL_PATTERN);
+
+	assert_int_equal(mcfd_auth_phase2_server(ctx, c_auth, in_bytes, out_bytes), 1);
+
+	assert_int_equal(mcfd_auth_phase2_server(ctx, c_auth, in_bytes, out_bytes), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_server_decrypt_fail(void **state __attribute__((unused)))
+{
+	expect_value(mcfd_cipher_decrypt, cipher, c_auth);
+	expect_value(mcfd_cipher_decrypt, ciphertext, in_bytes);
+	expect_value(mcfd_cipher_decrypt, ciphertext_bytes, AUTH_MSG_SIZE);
+	expect_value(mcfd_cipher_decrypt, tag, in_bytes + AUTH_MSG_SIZE);
+	expect_any(mcfd_cipher_decrypt, plaintext);
+	will_return(mcfd_cipher_decrypt, 1);
+
+	assert_int_equal(mcfd_auth_phase2_server(ctx, c_auth, in_bytes, out_bytes), 1);
+
+	assert_int_equal(mcfd_auth_phase2_server(ctx, c_auth, in_bytes, out_bytes), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_server_encrypt_fail(void **state __attribute__((unused)))
+{
+	expect_value(mcfd_cipher_decrypt, cipher, c_auth);
+	expect_value(mcfd_cipher_decrypt, ciphertext, in_bytes);
+	expect_value(mcfd_cipher_decrypt, ciphertext_bytes, AUTH_MSG_SIZE);
+	expect_value(mcfd_cipher_decrypt, tag, in_bytes + AUTH_MSG_SIZE);
+	expect_any(mcfd_cipher_decrypt, plaintext);
+	will_return(mcfd_cipher_decrypt, 0);
+
+	expect_any_count(curve25519_public, privkey, 2);
+	expect_any_count(curve25519_public, pubkey, 2);
+
+	expect_value(mcfd_cipher_encrypt, cipher, c_auth);
+	expect_any(mcfd_cipher_encrypt, plaintext);
+	expect_value(mcfd_cipher_encrypt, plaintext_bytes, AUTH_MSG_SIZE);
+	expect_value(mcfd_cipher_encrypt, ciphertext, out_bytes);
+	expect_value(mcfd_cipher_encrypt, tag, out_bytes + AUTH_MSG_SIZE);
+	will_return(mcfd_cipher_encrypt, 1);
+
+	assert_int_equal(mcfd_auth_phase2_server(ctx, c_auth, in_bytes, out_bytes), 1);
+
+	assert_int_equal(mcfd_auth_phase2_server(ctx, c_auth, in_bytes, out_bytes), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_server_normal(void **state __attribute__((unused)));
+
+static void mcfd_auth_phase2_server_wrong_phase(void **state __attribute__((unused)))
+{
+	mcfd_auth_phase2_server_normal(state);
+	memset(out_bytes, EMPTY_PATTERN, MCFD_AUTH_PHASE2_SERVER_OUT_BYTES);
+
+	assert_int_equal(mcfd_auth_phase2_server(ctx, c_auth, in_bytes, out_bytes), 1);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
+		assert_int_equal(out_bytes[i], EMPTY_PATTERN);
+	}
+}
+
+static void mcfd_auth_phase2_server_normal(void **state __attribute__((unused)))
+{
+	mcfd_auth_phase2_server_success();
+
+	assert_int_equal(mcfd_auth_phase2_server(ctx, c_auth, in_bytes, out_bytes), 0);
+
+	size_t i;
+	for (i = 0; i < MCFD_AUTH_PHASE2_SERVER_OUT_BYTES; i++) {
 		assert_int_equal(out_bytes[i], ENC_PATTERN);
 	}
 }
@@ -527,6 +791,35 @@ int run_unit_tests(void)
 
 	fprintf(stderr, "mcfd_auth_phase1_client:\n");
 	res |= run_tests(mcfd_auth_phase1_client_tests);
+	fprintf(stderr, "\n");
+
+	const UnitTest mcfd_auth_phase2_server_tests[] = {
+		unit_test_setup_teardown(mcfd_auth_phase2_server_ctx_null,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase2_server_cauth_null,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase2_server_in_null,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase2_server_out_null,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase2_server_noalloc,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase2_server_alloc_limited,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase2_server_challenge_fail,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase2_server_decrypt_fail,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase2_server_encrypt_fail,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase2_server_wrong_phase,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
+		unit_test_setup_teardown(mcfd_auth_phase2_server_normal,
+				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown)
+	};
+
+	fprintf(stderr, "mcfd_auth_phase2_server:\n");
+	res |= run_tests(mcfd_auth_phase2_server_tests);
 	fprintf(stderr, "\n");
 
 	return res;
