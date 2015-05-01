@@ -5,11 +5,19 @@ if (NOT CMAKE_BUILD_TYPE)
 	set (CMAKE_BUILD_TYPE Debug)
 endif ()
 
+option (USE_SECCOMP
+	"Use seccomp to filter unused system calls" ON)
+
 if (CMAKE_COMPILER_IS_GNUCC)
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra -Wall -pedantic -std=c11 -D_XOPEN_SOURCE=500")
 	set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Werror")
 endif ()
 
+configure_file (
+	"${PROJECT_SOURCE_DIR}/src/mcfd/mcfd_config.h.in"
+	"${PROJECT_BINARY_DIR}/src/mcfd/mcfd_config.h")
+
+include_directories ("${PROJECT_BINARY_DIR}/src/mcfd")
 include_directories (include/curve25519)
 include_directories (include/spongecrypt)
 include_directories (include/mcfd)
@@ -42,7 +50,9 @@ add_executable (mcfd
 	${H_SPONGEWRAP} ${S_SPONGEWRAP}
 	${H_CURVE25519} ${S_CURVE25519}
 	${H_MCFD} ${S_MCFD})
-target_link_libraries (mcfd seccomp)
+if (USE_SECCOMP)
+	target_link_libraries (mcfd seccomp)
+endif (USE_SECCOMP)
 
 get_property (H_SPONGEPRG GLOBAL PROPERTY H_SPONGEPRG)
 get_property (S_SPONGEPRG GLOBAL PROPERTY S_SPONGEPRG)

@@ -1,0 +1,6 @@
+#ifndef __MCFD_CONFIG_H__
+#define __MCFD_CONFIG_H__
+
+#cmakedefine USE_SECCOMP
+
+#endif /* __MCFD_CONFIG_H__ */

@@ -191,7 +191,9 @@ add_executable (mcfd_test
 	${H_SPONGEWRAP} ${S_SPONGEWRAP}
 	${H_CURVE25519} ${S_CURVE25519}
 	${H_MCFD} ${S_MCFD})
-target_link_libraries (mcfd_test seccomp)
+if (USE_SECCOMP)
+	target_link_libraries (mcfd_test seccomp)
+endif (USE_SECCOMP)
 add_test (build_mcfd_test "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target mcfd_test)
 

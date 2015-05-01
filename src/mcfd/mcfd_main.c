@@ -10,6 +10,8 @@
 
 #include <assert.h>
 
+#include <mcfd_config.h>
+
 #include "crypto_helpers.h"
 #include "mcfd_auth.h"
 #include "mcfd_common.h"
@@ -17,7 +19,10 @@
 #include "mcfd_kdf.h"
 #include "mcfd_net.h"
 #include "mcfd_random.h"
-#include "mcfd_seccomp.h"
+
+#ifdef USE_SECCOMP
+#	include "mcfd_seccomp.h"
+#endif /* USE_SECCOMP */
 
 static mcfd_cipher *c_auth = NULL;
 static mcfd_cipher *c_enc = NULL;
@@ -253,10 +258,12 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 		}
 		crypt_sock = server_sock;
 
+#ifdef USE_SECCOMP
 		if (mcfd_seccomp_preauth_client() != 0) {
 			print_err("seccomp filter", "failed to install seccomp filter");
 			terminate(EXIT_FAILURE);
 		}
+#endif /* USE_SECCOMP */
 
 		if (mcfd_random_get(nonce_auth, MCFD_NONCE_BYTES) != 0) {
 			print_err("gen nonce", "failed to generate auth nonce");
@@ -269,11 +276,13 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 	} else {
 		crypt_sock = client_sock;
 
+#ifdef USE_SECCOMP
 		if (mcfd_seccomp_preauth_server() != 0) {
 			print_err("seccomp filter", "failed to install seccomp filter");
 			net_resolve_free(res_result);
 			terminate(EXIT_FAILURE);
 		}
+#endif /* USE_SECCOMP */
 
 		if (net_recv(crypt_sock, nonce_auth, MCFD_NONCE_BYTES) != 0) {
 			print_err("recv nonce", "failed to receive auth nonce");
@@ -348,10 +357,12 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 		plain_sock = server_sock;
 	}
 
+#ifdef USE_SECCOMP
 	if (mcfd_seccomp_postauth() != 0) {
 		print_err("seccomp filter", "failed to install seccomp filter");
 		terminate(EXIT_FAILURE);
 	}
+#endif /* USE_SECCOMP */
 
 	assert(c_auth == NULL);
 	assert(c_enc != NULL);
@@ -628,10 +639,12 @@ int main(int argc, char *const *argv)
 		terminate(EXIT_FAILURE);
 	}
 
+#ifdef USE_SECCOMP
 	if (mcfd_seccomp_preconnect(do_fork) != 0) {
 		print_err("seccomp filter", "failed to install seccomp filter");
 		terminate(EXIT_FAILURE);
 	}
+#endif /* USE_SECCOMP */
 
 	/* TODO: Is this really necessary? */
 	/* Disable signals here to make sure the key is correctly destroyed again. */
