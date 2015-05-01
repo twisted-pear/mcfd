@@ -42,6 +42,7 @@ add_executable (mcfd
 	${H_SPONGEWRAP} ${S_SPONGEWRAP}
 	${H_CURVE25519} ${S_CURVE25519}
 	${H_MCFD} ${S_MCFD})
+target_link_libraries (mcfd seccomp)
 
 get_property (H_SPONGEPRG GLOBAL PROPERTY H_SPONGEPRG)
 get_property (S_SPONGEPRG GLOBAL PROPERTY S_SPONGEPRG)

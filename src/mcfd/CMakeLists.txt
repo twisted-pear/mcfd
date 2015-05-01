@@ -16,7 +16,8 @@ set_property (GLOBAL APPEND PROPERTY S_MCFD_CIPHER
 set_property (GLOBAL APPEND PROPERTY H_MCFD
 	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_common.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_net.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_random.h")
+	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_random.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_seccomp.h")
 set_property (GLOBAL APPEND PROPERTY S_MCFD
 	"${S_MCFD_AUTH}"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_common.c"
@@ -24,4 +25,5 @@ set_property (GLOBAL APPEND PROPERTY S_MCFD
 	"${S_MCFD_KDF}"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_main.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_net.c"
-	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_random.c")
+	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_random.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_seccomp.c")

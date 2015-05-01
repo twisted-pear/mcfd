@@ -50,9 +50,9 @@ Since nobody who does has checked mcfd's code, it is likely to decrease security
 Compilation
 -----------
 
-I only tested mcfd on Linux and with GCC. You'll also need cmake 2.8 or later. To compile
-it just run `make`. If everything goes well you'll find the mcfd binary under
-`build/mcfd`.
+I only tested mcfd on Linux and with GCC. You'll also need cmake 2.8 or later and
+libseccomp. To compile it just run `make`. If everything goes well you'll find the mcfd
+binary under `build/mcfd`.
 
 Usage
 -----

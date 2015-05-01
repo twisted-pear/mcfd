@@ -10,7 +10,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
 	set_source_files_properties ( ${S_SPONGEWRAP} PROPERTIES COMPILE_FLAGS
 		"-fprofile-arcs -ftest-coverage")
 	set_source_files_properties ( ${S_MCFD} PROPERTIES COMPILE_FLAGS
-		"-fprofile-arcs -ftest-coverage")
+		"-fprofile-arcs -ftest-coverage -D__MCFD_PROFILE__")
 	set_source_files_properties ( ${S_SPONGEPRG} PROPERTIES COMPILE_FLAGS
 		"-fprofile-arcs -ftest-coverage")
 	set_source_files_properties ( ${S_KECCAK_RNG} PROPERTIES COMPILE_FLAGS
@@ -191,6 +191,7 @@ add_executable (mcfd_test
 	${H_SPONGEWRAP} ${S_SPONGEWRAP}
 	${H_CURVE25519} ${S_CURVE25519}
 	${H_MCFD} ${S_MCFD})
+target_link_libraries (mcfd_test seccomp)
 add_test (build_mcfd_test "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target mcfd_test)
 
