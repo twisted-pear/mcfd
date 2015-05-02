@@ -1,7 +1,9 @@
 #include "mcfd_seccomp.h"
 
+#include <fcntl.h>
 #include <unistd.h>
 #include <seccomp.h>
+#include <sys/prctl.h>
 
 static scmp_filter_ctx base_rules(void)
 {
@@ -11,9 +13,12 @@ static scmp_filter_ctx base_rules(void)
 	}
 
 	int err = 0;
+	pid_t pid = getpid();
 
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(recvfrom), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(recv), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(sendto), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(send), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(poll), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(write), 1,
 			SCMP_A0(SCMP_CMP_EQ, STDIN_FILENO));
@@ -26,10 +31,16 @@ static scmp_filter_ctx base_rules(void)
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(close), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(exit_group), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(exit), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(tgkill), 2,
+			SCMP_A0(SCMP_CMP_EQ, pid),
+			SCMP_A1(SCMP_CMP_EQ, pid));
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(kill), 1,
+			SCMP_A0(SCMP_CMP_EQ, pid));
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(gettid), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getpid), 0);
 
 	/* These are needed when profiling is used. */
 #ifdef __MCFD_PROFILE__
-	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getpid), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(open), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fstat), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(lseek), 0);
@@ -70,8 +81,8 @@ int mcfd_seccomp_preconnect(int allow_fork)
 
 	int err = 0;
 
-	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getpid), 0);
-	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(open), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(open), 1,
+			SCMP_A1(SCMP_CMP_MASKED_EQ, O_RDONLY|O_WRONLY|O_RDWR, O_RDONLY));
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(fstat), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(stat), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(ioctl), 0);
@@ -88,14 +99,15 @@ int mcfd_seccomp_preconnect(int allow_fork)
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(recvmsg), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(listen), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(accept), 0);
-	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
+			SCMP_A0(SCMP_CMP_EQ, PR_SET_NO_NEW_PRIVS));
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
+			SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP));
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0);
 	if (allow_fork != 0) {
 		err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(clone), 0);
 		err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(waitpid), 0);
 		err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(wait4), 0);
-		err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(gettid), 0);
-		err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(tgkill), 0);
 	}
 
 	if (err != 0) {
@@ -117,7 +129,10 @@ int mcfd_seccomp_preauth_server(void)
 
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(socket), 0);
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(connect), 0);
-	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
+			SCMP_A0(SCMP_CMP_EQ, PR_SET_NO_NEW_PRIVS));
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
+			SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP));
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0);
 
 	if (err != 0) {
@@ -137,7 +152,10 @@ int mcfd_seccomp_preauth_client(void)
 
 	int err = 0;
 
-	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
+			SCMP_A0(SCMP_CMP_EQ, PR_SET_NO_NEW_PRIVS));
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
+			SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP));
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0);
 
 	if (err != 0) {

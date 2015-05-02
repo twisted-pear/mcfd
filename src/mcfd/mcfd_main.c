@@ -637,11 +637,6 @@ int main(int argc, char *const *argv)
 
 	assert(pass != NULL && pass_len > 0);
 
-	if (mcfd_random_init() != 0) {
-		print_err("init RNG", "failed to init RNG");
-		terminate(EXIT_FAILURE);
-	}
-
 #ifdef USE_SECCOMP
 	if (mcfd_seccomp_preconnect(do_fork) != 0) {
 		print_err("seccomp filter", "failed to install seccomp filter");
@@ -662,6 +657,11 @@ int main(int argc, char *const *argv)
 	explicit_bzero(pass, pass_len);
 
 	unblock_signals();
+
+	if (mcfd_random_init() != 0) {
+		print_err("init RNG", "failed to init RNG");
+		terminate(EXIT_FAILURE);
+	}
 
 	listen_sock = create_listen_socket(listen_addr, listen_port);
 	if (listen_sock == -1) {
