@@ -246,6 +246,9 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 	int plain_sock = -1;
 
 	struct addrinfo *res_result = net_resolve(dst_addr, dst_port);
+	if (res_result == NULL) {
+		terminate(EXIT_FAILURE);
+	}
 
 	if (mode == MODE_CLIENT) {
 		assert(server_sock == -1);
