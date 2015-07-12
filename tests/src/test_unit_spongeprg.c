@@ -22,6 +22,9 @@
 
 #define GET_PATTERN 0x06
 
+#define IN_SIZE CREATE_BLOCK_SIZE
+#define IN_PATTERN 0x11
+
 static permutation *f = NULL;
 static pad *p = NULL;
 
@@ -332,12 +335,40 @@ static void spongeprg_init_bs_max(void **state __attribute__((unused)))
 	spongeprg_free(w);
 }
 
+static spongeprg *g = NULL;
+static unsigned char *in = NULL;
+
 static void spongeprg_feed_setup(void **state __attribute__((unused)))
 {
+	f = calloc(1, sizeof(permutation));
+	assert_non_null(f);
+
+	f->f = spongeprg_f;
+	f->xor = spongeprg_xor;
+	f->get = spongeprg_get;
+	f->width = CREATE_WIDTH;
+
+	p = calloc(1, sizeof(pad));
+	assert_non_null(p);
+
+	p->pf = spongeprg_pf;
+	p->rate = CREATE_RATE;
+	p->min_bit_len = CREATE_MIN_RATE;
+
+	g = spongeprg_init(f, p, CREATE_RATE, CREATE_BLOCK_SIZE);
+	assert_non_null(g);
+
+	in = calloc(IN_SIZE, 1);
+	assert_non_null(in);
+	memset(in, IN_PATTERN, IN_SIZE);
 }
 
 static void spongeprg_feed_teardown(void **state __attribute__((unused)))
 {
+	free(in);
+	spongeprg_free(g);
+	free(f);
+	free(p);
 }
 
 static void spongeprg_feed_g_null(void **state __attribute__((unused)))
