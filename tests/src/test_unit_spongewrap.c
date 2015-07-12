@@ -140,6 +140,7 @@ static void spongewrap_init_setup(void **state __attribute__((unused)))
 	expected_block_size = CREATE_BLOCK_SIZE;
 
 	keybuf = calloc(KEYBUF_SIZE, 1);
+	assert_non_null(keybuf);
 	memset(keybuf, KEYBUF_PATTERN, KEYBUF_SIZE);
 }
 
@@ -552,25 +553,31 @@ static void spongewrap_wrap_setup(void **state __attribute__((unused)))
 	expected_block_size = CREATE_BLOCK_SIZE;
 
 	keybuf = calloc(KEYBUF_SIZE, 1);
+	assert_non_null(keybuf);
 	memset(keybuf, KEYBUF_PATTERN, KEYBUF_SIZE);
 
 	spongewrap_init_success(CREATE_BLOCK_SIZE, CREATE_KEY_SIZE);
 
 	w = spongewrap_init(f, p, CREATE_RATE, CREATE_BLOCK_SIZE, keybuf,
 			CREATE_KEY_SIZE);
+	assert_non_null(w);
 
 	free(keybuf);
 
 	a = calloc(A_SIZE, 1);
+	assert_non_null(a);
 	memset(a, A_PATTERN, A_SIZE);
 
 	b = calloc(B_SIZE, 1);
+	assert_non_null(b);
 	memset(b, B_PATTERN, B_SIZE);
 
 	c = calloc(C_SIZE, 1);
+	assert_non_null(c);
 	memset(c, C_PATTERN, C_SIZE);
 
 	t = calloc(T_SIZE, 1);
+	assert_non_null(t);
 	memset(t, T_PATTERN, T_SIZE);
 }
 
@@ -1172,25 +1179,31 @@ static void spongewrap_unwrap_setup(void **state __attribute__((unused)))
 	expected_block_size = CREATE_BLOCK_SIZE;
 
 	keybuf = calloc(KEYBUF_SIZE, 1);
+	assert_non_null(keybuf);
 	memset(keybuf, KEYBUF_PATTERN, KEYBUF_SIZE);
 
 	spongewrap_init_success(CREATE_BLOCK_SIZE, CREATE_KEY_SIZE);
 
 	w = spongewrap_init(f, p, CREATE_RATE, CREATE_BLOCK_SIZE, keybuf,
 			CREATE_KEY_SIZE);
+	assert_non_null(w);
 
 	free(keybuf);
 
 	a = calloc(A_SIZE, 1);
+	assert_non_null(a);
 	memset(a, A_PATTERN, A_SIZE);
 
 	b = calloc(B_SIZE, 1);
+	assert_non_null(b);
 	memset(b, B_PATTERN, B_SIZE);
 
 	c = calloc(C_SIZE, 1);
+	assert_non_null(c);
 	memset(c, C_PATTERN, C_SIZE);
 
 	t = calloc(T_SIZE, 1);
+	assert_non_null(t);
 	memset(t, GET_PATTERN, T_SIZE);
 }
 
