@@ -19,11 +19,17 @@ int recv_crypt(int crypt_sock, mcfd_cipher *c_dec, unsigned char *inbuf,
 int crypt_to_plain(int crypt_sock, int plain_sock, mcfd_cipher *c_dec);
 int plain_to_crypt(int plain_sock, int crypt_sock, mcfd_cipher *c_enc);
 
-struct addrinfo *net_resolve(const char *addr, const char *port);
+enum op_addr_family {
+	ADDR_FAMILY_ANY = 0,
+	ADDR_FAMILY_4,
+	ADDR_FAMILY_6
+};
+
+struct addrinfo *net_resolve(const char *addr, const char *port, enum op_addr_family family);
 void net_resolve_free(struct addrinfo *gai_result);
 
 int net_connect(struct addrinfo *gai_result);
 
-int create_listen_socket(const char *addr, const char *port);
+int create_listen_socket(const char *addr, const char *port, enum op_addr_family family);
 
 #endif /* __MCFD_NET_H__ */

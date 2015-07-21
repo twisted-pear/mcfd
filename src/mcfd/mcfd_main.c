@@ -96,8 +96,8 @@ void cleanup(void)
 
 noreturn static void usage(void)
 {
-	fprintf(stderr, "Usage: %s [-f] [-s] [-l <listen_addr>] [-k <key>] <listen_port> "
-			"<dst_addr> <dst_port>\n", progname);
+	fprintf(stderr, "Usage: %s [-f] [-s] [-4|-6] [-l <listen_addr>] [-k <key>] "
+			"<listen_port> <dst_addr> <dst_port>\n", progname);
 	terminate(EXIT_FAILURE);
 }
 
@@ -230,7 +230,7 @@ static int authenticate(int crypt_sock, const enum op_mode mode, mcfd_cipher *c_
 }
 
 noreturn static void handle_connection(const char *dst_addr, const char *dst_port,
-		const enum op_mode mode)
+		const enum op_mode mode, const enum op_addr_family family)
 {
 	assert(client_sock != -1);
 	assert(c_auth == NULL);
@@ -245,7 +245,7 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 	int crypt_sock = -1;
 	int plain_sock = -1;
 
-	struct addrinfo *res_result = net_resolve(dst_addr, dst_port);
+	struct addrinfo *res_result = net_resolve(dst_addr, dst_port, family);
 	if (res_result == NULL) {
 		terminate(EXIT_FAILURE);
 	}
@@ -550,7 +550,7 @@ out:
 /* TODO: add more meaningful output */
 int main(int argc, char *const *argv)
 {
-	if (argc < 4 || argc > 10) {
+	if (argc < 4 || argc > 11) {
 		usage();
 	}
 
@@ -569,8 +569,9 @@ int main(int argc, char *const *argv)
 	char *pass = NULL;
 	size_t pass_len = 0;
 	enum op_mode mode = MODE_CLIENT;
+	enum op_addr_family family = ADDR_FAMILY_ANY;
 	int opt;
-	while ((opt = getopt(argc, argv, "fk:l:s")) != EOF) {
+	while ((opt = getopt(argc, argv, "46fk:l:s")) != EOF) {
 		switch (opt) {
 		case 'f':
 			do_fork = 1;
@@ -598,6 +599,20 @@ int main(int argc, char *const *argv)
 			break;
 		case 's':
 			mode = MODE_SERVER;
+			break;
+		case '4':
+			if (family != ADDR_FAMILY_ANY) {
+				usage();
+			}
+
+			family = ADDR_FAMILY_4;
+			break;
+		case '6':
+			if (family != ADDR_FAMILY_ANY) {
+				usage();
+			}
+
+			family = ADDR_FAMILY_6;
 			break;
 		case '?':
 			usage();
@@ -663,7 +678,7 @@ int main(int argc, char *const *argv)
 		terminate(EXIT_FAILURE);
 	}
 
-	listen_sock = create_listen_socket(listen_addr, listen_port);
+	listen_sock = create_listen_socket(listen_addr, listen_port, family);
 	if (listen_sock == -1) {
 		terminate(EXIT_FAILURE);
 	}
@@ -694,7 +709,7 @@ int main(int argc, char *const *argv)
 
 		if (pid == 0) {
 			/* child */
-			handle_connection(dst_addr, dst_port, mode);
+			handle_connection(dst_addr, dst_port, mode, family);
 			assert(0);
 		} else if (pid < 0) {
 			print_err("fork", strerror(errno));

@@ -276,15 +276,37 @@ out:
 	return ret;
 }
 
-static struct addrinfo *_net_resolve(const char *addr, const char *port, int flags)
+static int get_addr_family(enum op_addr_family family)
+{
+	int ret = 0;
+
+	switch (family) {
+	case ADDR_FAMILY_ANY:
+		ret = AF_UNSPEC;
+		break;
+	case ADDR_FAMILY_4:
+		ret = AF_INET;
+		break;
+	case ADDR_FAMILY_6:
+		ret = AF_INET6;
+		break;
+	default:
+		assert(0);
+	}
+
+	return ret;
+}
+
+static struct addrinfo *_net_resolve(const char *addr, const char *port, int family,
+		int flags)
 {
 	assert(port != NULL);
 
 	struct addrinfo hints; /* What kind of socket do we want? */
 	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_family = AF_INET;
+	hints.ai_family = family;
 	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_flags = flags;
+	hints.ai_flags = flags | AI_ADDRCONFIG;
 	hints.ai_protocol = IPPROTO_TCP;
 
 	/* The result of getaddrinfo. Do not modify this, we need to free it later. */
@@ -305,11 +327,11 @@ static struct addrinfo *_net_resolve(const char *addr, const char *port, int fla
 	return result;
 }
 
-struct addrinfo *net_resolve(const char *addr, const char *port)
+struct addrinfo *net_resolve(const char *addr, const char *port, enum op_addr_family family)
 {
 	assert(port != NULL);
 
-	return _net_resolve(addr, port, 0);
+	return _net_resolve(addr, port, get_addr_family(family), 0);
 }
 
 void net_resolve_free(struct addrinfo *gai_result)
@@ -350,13 +372,14 @@ int net_connect(struct addrinfo *gai_result)
 	return -1;
 }
 
-int create_listen_socket(const char *addr, const char *port)
+int create_listen_socket(const char *addr, const char *port, enum op_addr_family family)
 {
 	assert(port != NULL);
 
 	int sock = -1;
 
-	struct addrinfo *res_result = _net_resolve(addr, port, AI_PASSIVE);
+	struct addrinfo *res_result = _net_resolve(addr, port, get_addr_family(family),
+			AI_PASSIVE);
 	if (res_result == NULL) {
 		return -1;
 	}
