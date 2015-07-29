@@ -60,7 +60,7 @@ Usage
 The mcfd binary can act as both server and client component. Here is mcfd's standard usage
 message:
 
-`Usage: mcfd [-f] [-s] [-l <listen_addr>] [-k <key>] <listen_port> <dst_addr> <dst_port>`
+`Usage: mcfd [-f] [-s] [-4|-6] [-l <listen_addr>] [-k <key>] <listen_port> <dst_addr> <dst_port>`
 
 The key used for authentication is read from stdin or specified with the `-k` flag. Unless
 `-s` is specified, mcfd operates as client component.
@@ -71,6 +71,8 @@ for a connection from an mcfd client.
 
 The `dst_addr` and `dst_port` parameters determine the mcfd server to connect to in client
 mode and the actual TCP server in server mode.
+
+The `-4` and `-6` flags tell mcfd to use IPv4 or IPv6 exclusively.
 
 Finally, the optional `-f` flag tells mcfd to fork a new process for each connection.
 
