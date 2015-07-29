@@ -72,7 +72,7 @@ for a connection from an mcfd client.
 The `dst_addr` and `dst_port` parameters determine the mcfd server to connect to in client
 mode and the actual TCP server in server mode.
 
-The `-4` and `-6` flags tell mcfd to use IPv4 or IPv6 exclusively.
+The `-4` and `-6` flags tell mcfd to exclusively use IPv4 or IPv6 respectively.
 
 Finally, the optional `-f` flag tells mcfd to fork a new process for each connection.
 
