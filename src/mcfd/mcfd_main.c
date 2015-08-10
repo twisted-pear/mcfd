@@ -229,150 +229,13 @@ static int authenticate(int crypt_sock, const enum op_mode mode, mcfd_cipher *c_
 	return ret;
 }
 
-noreturn static void handle_connection(const char *dst_addr, const char *dst_port,
-		const enum op_mode mode, const enum op_addr_family family)
+static int forward(int plain_sock, int crypt_sock, mcfd_cipher *c_enc, mcfd_cipher *c_dec)
 {
-	assert(client_sock != -1);
-	assert(c_auth == NULL);
-	assert(c_enc == NULL);
-	assert(c_dec == NULL);
-
-	close(listen_sock);
-	listen_sock = -1;
-
-	/* TODO: investigate SRP. */
-
-	int crypt_sock = -1;
-	int plain_sock = -1;
-
-	struct addrinfo *res_result = net_resolve(dst_addr, dst_port, family);
-	if (res_result == NULL) {
-		terminate(EXIT_FAILURE);
-	}
-
-	if (mode == MODE_CLIENT) {
-		assert(server_sock == -1);
-
-		server_sock = net_connect(res_result);
-		net_resolve_free(res_result);
-
-		if (server_sock == -1) {
-			terminate(EXIT_FAILURE);
-		}
-		crypt_sock = server_sock;
-
-#ifdef USE_SECCOMP
-		if (mcfd_seccomp_preauth_client() != 0) {
-			print_err("seccomp filter", "failed to install seccomp filter");
-			terminate(EXIT_FAILURE);
-		}
-#endif /* USE_SECCOMP */
-
-		if (mcfd_random_get(nonce_auth, MCFD_NONCE_BYTES) != 0) {
-			print_err("gen nonce", "failed to generate auth nonce");
-			terminate(EXIT_FAILURE);
-		}
-		if (net_send(crypt_sock, nonce_auth, MCFD_NONCE_BYTES) != 0) {
-			print_err("send nonce", "failed to send auth nonce");
-			terminate(EXIT_FAILURE);
-		}
-	} else {
-		crypt_sock = client_sock;
-
-#ifdef USE_SECCOMP
-		if (mcfd_seccomp_preauth_server() != 0) {
-			print_err("seccomp filter", "failed to install seccomp filter");
-			net_resolve_free(res_result);
-			terminate(EXIT_FAILURE);
-		}
-#endif /* USE_SECCOMP */
-
-		if (net_recv(crypt_sock, nonce_auth, MCFD_NONCE_BYTES) != 0) {
-			print_err("recv nonce", "failed to receive auth nonce");
-			net_resolve_free(res_result);
-			terminate(EXIT_FAILURE);
-		}
-	}
-
-	block_signals();
-
-	c_auth = mcfd_cipher_init(nonce_auth, key_auth);
-
-	explicit_bzero(key_auth, MCFD_KEY_BYTES);
-	explicit_bzero(nonce_auth, MCFD_KEY_BYTES);
-
-	unblock_signals();
-
-	if (c_auth == NULL) {
-		print_err("init cipher", "failed to init auth cipher");
-		if (mode != MODE_CLIENT) {
-			net_resolve_free(res_result);
-		}
-		terminate(EXIT_FAILURE);
-	}
-
-	if (authenticate(crypt_sock, mode, c_auth, key_enc, key_dec, nonce_enc, nonce_dec)
-			!= 0) {
-		print_err("auth", "failed to authenticate");
-		if (mode != MODE_CLIENT) {
-			net_resolve_free(res_result);
-		}
-		terminate(EXIT_FAILURE);
-	}
-
-	/* We disable signals here to absolutely make sure that the old ciphers are
-	 * properly destroyed. */
-	block_signals();
-
-	mcfd_cipher_free(c_auth);
-	c_auth = NULL;
-
-	c_enc = mcfd_cipher_init(nonce_enc, key_enc);
-	c_dec = mcfd_cipher_init(nonce_dec, key_dec);
-
-	explicit_bzero(key_enc, MCFD_KEY_BYTES);
-	explicit_bzero(key_dec, MCFD_KEY_BYTES);
-
-	explicit_bzero(nonce_enc, MCFD_NONCE_BYTES);
-	explicit_bzero(nonce_dec, MCFD_NONCE_BYTES);
-
-	unblock_signals();
-
-	if (c_enc == NULL || c_dec == NULL) {
-		print_err("init ciphers", "failed to init encryption ciphers");
-		if (mode != MODE_CLIENT) {
-			net_resolve_free(res_result);
-		}
-		terminate(EXIT_FAILURE);
-	}
-
-	if (mode == MODE_CLIENT) {
-		plain_sock = client_sock;
-	} else {
-		assert(server_sock == -1);
-
-		server_sock = net_connect(res_result);
-		net_resolve_free(res_result);
-
-		if (server_sock == -1) {
-			terminate(EXIT_FAILURE);
-		}
-		plain_sock = server_sock;
-	}
-
-#ifdef USE_SECCOMP
-	if (mcfd_seccomp_postauth() != 0) {
-		print_err("seccomp filter", "failed to install seccomp filter");
-		terminate(EXIT_FAILURE);
-	}
-#endif /* USE_SECCOMP */
-
-	assert(c_auth == NULL);
-	assert(c_enc != NULL);
-	assert(c_dec != NULL);
-
 	assert(crypt_sock != -1);
 	assert(plain_sock != -1);
+
+	assert(c_enc != NULL);
+	assert(c_dec != NULL);
 
 	struct pollfd fds[2];
 	fds[0].fd = server_sock;
@@ -395,7 +258,7 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 
 			if (errno != EINTR) {
 				print_err("poll", strerror(errno));
-				terminate(EXIT_FAILURE);
+				return 1;
 			}
 		}
 
@@ -410,13 +273,13 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 
 			/* Connection closed */
 			if (pfd->revents & (POLLHUP)) {
-				terminate(EXIT_SUCCESS);
+				return 0;
 			}
 
 			/* Some error, terminate */
 			if (pfd->revents & (POLLERR | POLLNVAL)) {
 				print_err("handle_connection", "socket error");
-				terminate(EXIT_FAILURE);
+				return 1;
 			}
 
 			assert(pfd->revents & POLLIN);
@@ -432,13 +295,243 @@ noreturn static void handle_connection(const char *dst_addr, const char *dst_por
 
 			/* Error */
 			if (err < 0) {
-				terminate(EXIT_FAILURE);
+				return 1;
 			/* Connection closed */
 			} else if (err > 0) {
-				terminate(EXIT_SUCCESS);
+				return 0;
 			}
 		}
 	}
+
+	assert(0);
+}
+
+static int get_auth_nonce(const enum op_mode mode, int crypt_sock, unsigned char *nonce)
+{
+	assert(crypt_sock != -1);
+	assert(nonce != NULL);
+
+	if (mode == MODE_CLIENT) {
+		if (mcfd_random_get(nonce, MCFD_NONCE_BYTES) != 0) {
+			print_err("gen nonce", "failed to generate auth nonce");
+			return 1;
+		}
+		if (net_send(crypt_sock, nonce, MCFD_NONCE_BYTES) != 0) {
+			print_err("send nonce", "failed to send auth nonce");
+			return 1;
+		}
+	} else {
+		if (net_recv(crypt_sock, nonce, MCFD_NONCE_BYTES) != 0) {
+			print_err("recv nonce", "failed to receive auth nonce");
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static mcfd_cipher *get_cipher(unsigned char *nonce, unsigned char *key)
+{
+	assert(nonce != NULL);
+	assert(key != NULL);
+
+	mcfd_cipher *c = mcfd_cipher_init(nonce, key);
+
+	explicit_bzero(key, MCFD_KEY_BYTES);
+	explicit_bzero(nonce, MCFD_KEY_BYTES);
+
+	return c;
+}
+
+noreturn static void handle_connection_server(const char *dst_addr, const char *dst_port,
+		const enum op_addr_family family)
+{
+	assert(client_sock != -1);
+	assert(c_auth == NULL);
+	assert(c_enc == NULL);
+	assert(c_dec == NULL);
+
+	close(listen_sock);
+	listen_sock = -1;
+
+	int crypt_sock = -1;
+	int plain_sock = -1;
+
+	struct addrinfo *res_result = net_resolve(dst_addr, dst_port, family);
+	if (res_result == NULL) {
+		terminate(EXIT_FAILURE);
+	}
+
+	crypt_sock = client_sock;
+
+#ifdef USE_SECCOMP
+	if (mcfd_seccomp_preauth_server() != 0) {
+		print_err("seccomp filter", "failed to install seccomp filter");
+		net_resolve_free(res_result);
+		terminate(EXIT_FAILURE);
+	}
+#endif /* USE_SECCOMP */
+
+	if (get_auth_nonce(MODE_SERVER, crypt_sock, nonce_auth) != 0) {
+		net_resolve_free(res_result);
+		terminate(EXIT_FAILURE);
+	}
+
+	block_signals();
+
+	c_auth = get_cipher(nonce_auth, key_auth);
+
+	unblock_signals();
+
+	if (c_auth == NULL) {
+		print_err("init cipher", "failed to init auth cipher");
+		net_resolve_free(res_result);
+		terminate(EXIT_FAILURE);
+	}
+
+	if (authenticate(crypt_sock, MODE_SERVER, c_auth, key_enc, key_dec, nonce_enc,
+				nonce_dec) != 0) {
+		print_err("auth", "failed to authenticate");
+		net_resolve_free(res_result);
+		terminate(EXIT_FAILURE);
+	}
+
+	/* We disable signals here to absolutely make sure that the old ciphers are
+	 * properly destroyed. */
+	block_signals();
+
+	mcfd_cipher_free(c_auth);
+	c_auth = NULL;
+
+	c_enc = get_cipher(nonce_enc, key_enc);
+	c_dec = get_cipher(nonce_dec, key_dec);
+
+	unblock_signals();
+
+	if (c_enc == NULL || c_dec == NULL) {
+		print_err("init ciphers", "failed to init encryption ciphers");
+		net_resolve_free(res_result);
+		terminate(EXIT_FAILURE);
+	}
+
+	assert(server_sock == -1);
+
+	server_sock = net_connect(res_result);
+	net_resolve_free(res_result);
+
+	if (server_sock == -1) {
+		terminate(EXIT_FAILURE);
+	}
+	plain_sock = server_sock;
+
+#ifdef USE_SECCOMP
+	if (mcfd_seccomp_postauth() != 0) {
+		print_err("seccomp filter", "failed to install seccomp filter");
+		terminate(EXIT_FAILURE);
+	}
+#endif /* USE_SECCOMP */
+
+	assert(c_auth == NULL);
+
+	if (forward(plain_sock, crypt_sock, c_enc, c_dec) != 0) {
+		terminate(EXIT_FAILURE);
+	}
+
+	terminate(EXIT_SUCCESS);
+
+	assert(0);
+}
+
+noreturn static void handle_connection_client(const char *dst_addr, const char *dst_port,
+		const enum op_addr_family family)
+{
+	assert(client_sock != -1);
+	assert(c_auth == NULL);
+	assert(c_enc == NULL);
+	assert(c_dec == NULL);
+
+	close(listen_sock);
+	listen_sock = -1;
+
+	int crypt_sock = -1;
+	int plain_sock = -1;
+
+	struct addrinfo *res_result = net_resolve(dst_addr, dst_port, family);
+	if (res_result == NULL) {
+		terminate(EXIT_FAILURE);
+	}
+
+	assert(server_sock == -1);
+
+	server_sock = net_connect(res_result);
+	net_resolve_free(res_result);
+
+	if (server_sock == -1) {
+		terminate(EXIT_FAILURE);
+	}
+	crypt_sock = server_sock;
+
+#ifdef USE_SECCOMP
+	if (mcfd_seccomp_preauth_client() != 0) {
+		print_err("seccomp filter", "failed to install seccomp filter");
+		terminate(EXIT_FAILURE);
+	}
+#endif /* USE_SECCOMP */
+
+	if (get_auth_nonce(MODE_CLIENT, crypt_sock, nonce_auth) != 0) {
+		terminate(EXIT_FAILURE);
+	}
+
+	block_signals();
+
+	c_auth = get_cipher(nonce_auth, key_auth);
+
+	unblock_signals();
+
+	if (c_auth == NULL) {
+		print_err("init cipher", "failed to init auth cipher");
+		terminate(EXIT_FAILURE);
+	}
+
+	if (authenticate(crypt_sock, MODE_CLIENT, c_auth, key_enc, key_dec, nonce_enc, nonce_dec)
+			!= 0) {
+		print_err("auth", "failed to authenticate");
+		terminate(EXIT_FAILURE);
+	}
+
+	/* We disable signals here to absolutely make sure that the old ciphers are
+	 * properly destroyed. */
+	block_signals();
+
+	mcfd_cipher_free(c_auth);
+	c_auth = NULL;
+
+	c_enc = get_cipher(nonce_enc, key_enc);
+	c_dec = get_cipher(nonce_dec, key_dec);
+
+	unblock_signals();
+
+	if (c_enc == NULL || c_dec == NULL) {
+		print_err("init ciphers", "failed to init encryption ciphers");
+		terminate(EXIT_FAILURE);
+	}
+
+	plain_sock = client_sock;
+
+#ifdef USE_SECCOMP
+	if (mcfd_seccomp_postauth() != 0) {
+		print_err("seccomp filter", "failed to install seccomp filter");
+		terminate(EXIT_FAILURE);
+	}
+#endif /* USE_SECCOMP */
+
+	assert(c_auth == NULL);
+
+	if (forward(plain_sock, crypt_sock, c_enc, c_dec) != 0) {
+		terminate(EXIT_FAILURE);
+	}
+
+	terminate(EXIT_SUCCESS);
 
 	assert(0);
 }
@@ -709,7 +802,11 @@ int main(int argc, char *const *argv)
 
 		if (pid == 0) {
 			/* child */
-			handle_connection(dst_addr, dst_port, mode, family);
+			if (mode == MODE_CLIENT) {
+				handle_connection_client(dst_addr, dst_port, family);
+			} else {
+				handle_connection_server(dst_addr, dst_port, family);
+			}
 			assert(0);
 		} else if (pid < 0) {
 			print_err("fork", strerror(errno));
