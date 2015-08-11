@@ -199,3 +199,6 @@ add_test (build_mcfd_test "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 
 configure_file (test_end_to_end.sh test_end_to_end.sh COPYONLY)
 add_test (end_to_end test_end_to_end.sh "${CMAKE_BINARY_DIR}/tests/mcfd_test" "asdf" 5000)
+
+configure_file (test_end_to_end_reversed.sh test_end_to_end_reversed.sh COPYONLY)
+add_test (end_to_end_reversed test_end_to_end_reversed.sh "${CMAKE_BINARY_DIR}/tests/mcfd_test" "asdf" 5000)
