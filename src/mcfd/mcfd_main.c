@@ -351,9 +351,6 @@ noreturn static void handle_connection_server(const char *dst_addr, const char *
 	assert(c_enc == NULL);
 	assert(c_dec == NULL);
 
-	close(listen_sock);
-	listen_sock = -1;
-
 	int crypt_sock = -1;
 	int plain_sock = -1;
 
@@ -449,9 +446,6 @@ noreturn static void handle_connection_client(const char *dst_addr, const char *
 	assert(c_auth == NULL);
 	assert(c_enc == NULL);
 	assert(c_dec == NULL);
-
-	close(listen_sock);
-	listen_sock = -1;
 
 	int crypt_sock = -1;
 	int plain_sock = -1;
@@ -802,11 +796,15 @@ int main(int argc, char *const *argv)
 
 		if (pid == 0) {
 			/* child */
+			close(listen_sock);
+			listen_sock = -1;
+
 			if (mode == MODE_CLIENT) {
 				handle_connection_client(dst_addr, dst_port, family);
 			} else {
 				handle_connection_server(dst_addr, dst_port, family);
 			}
+
 			assert(0);
 		} else if (pid < 0) {
 			print_err("fork", strerror(errno));
