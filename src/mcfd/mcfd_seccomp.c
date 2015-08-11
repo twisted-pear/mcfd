@@ -166,6 +166,35 @@ int mcfd_seccomp_preauth_client(void)
 	return apply_rules(ctx);
 }
 
+int mcfd_seccomp_preauth_sink(void)
+{
+	scmp_filter_ctx *ctx = base_rules();
+	if (ctx == NULL) {
+		return 1;
+	}
+
+	int err = 0;
+
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(accept), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
+			SCMP_A0(SCMP_CMP_EQ, PR_SET_NO_NEW_PRIVS));
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
+			SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP));
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0);
+
+	if (err != 0) {
+		seccomp_release(ctx);
+		return 1;
+	}
+
+	return apply_rules(ctx);
+}
+
+int mcfd_seccomp_preauth_source(void)
+{
+	return mcfd_seccomp_preauth_server();
+}
+
 int mcfd_seccomp_postauth(void)
 {
 	return apply_rules(base_rules());
