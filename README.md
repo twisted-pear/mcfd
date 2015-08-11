@@ -60,7 +60,7 @@ Usage
 The mcfd binary can act as both server and client component. Here is mcfd's standard usage
 message:
 
-`Usage: mcfd [-f] [-s] [-4|-6] [-l <listen_addr>] [-k <key>] <listen_port> <dst_addr> <dst_port>`
+`Usage: mcfd [-f|-r] [-s] [-4|-6] [-l <listen_addr>] [-k <key>] <listen_port> <dst_addr> <dst_port>`
 
 The key used for authentication is read from stdin or specified with the `-k` flag. Unless
 `-s` is specified, mcfd operates as client component.
@@ -74,7 +74,14 @@ mode and the actual TCP server in server mode.
 
 The `-4` and `-6` flags tell mcfd to exclusively use IPv4 or IPv6 respectively.
 
-Finally, the optional `-f` flag tells mcfd to fork a new process for each connection.
+The optional `-f` flag tells mcfd to fork a new process for each connection.
+
+Finally, the optional `-r` flag tells mcfd to operate in reverse mode. In this case the
+mcfd server accepts connections from both the mcfd client and the actual TCP client (on
+`listen_addr:listen_port` and `dst_addr:dst_port` respectively) while the mcfd client
+connects to both, the mcfd server and the actual TCP server (to `dst_addr:dst_port` and
+`listen_addr:listen_port` respectively) . In essence, this reverses the client/server
+relationship between the TCP server and client.
 
 A simple use case might look like this:
 
