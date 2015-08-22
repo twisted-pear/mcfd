@@ -29,9 +29,27 @@ void print_buf(const unsigned char *buf, size_t len)
 	printf("\n");
 }
 
-void print_err(const char *const action, const char *const reason)
+static volatile sig_atomic_t verbosity = 0;
+void set_verbosity(int v)
 {
-	(void) fprintf(stderr, "%s [ERROR] %s: %s\n", progname, action, reason);
+	verbosity = v;
+}
+
+void print_msg(int severity, const char *const fmt, ...)
+{
+	va_list argp;
+	va_start(argp, fmt);
+	vprint_msg(severity, fmt, argp);
+	va_end(argp);
+}
+
+void vprint_msg(int severity, const char *const fmt, va_list argp)
+{
+	if (severity > verbosity) {
+		return;
+	}
+
+	(void) vfprintf(stderr, fmt, argp);
 }
 
 static volatile sig_atomic_t handling_signal = 0;

@@ -102,7 +102,7 @@ void cleanup(void)
 
 noreturn static void usage(void)
 {
-	fprintf(stderr, "Usage: %s [-f|-r] [-s] [-4|-6] [-l <listen_addr>] [-k <key>] "
+	fprintf(stderr, "Usage: %s [-f|-r] [-s] [-4|-6] [-v[v[v]]] [-l <listen_addr>] [-k <key>] "
 			"<listen_port> <dst_addr> <dst_port>\n", progname);
 	terminate(EXIT_FAILURE);
 }
@@ -877,8 +877,9 @@ int main(int argc, char *const *argv)
 	enum op_mode mode = MODE_CLIENT;
 	enum op_dir dir = DIR_NORMAL;
 	enum op_addr_family family = ADDR_FAMILY_ANY;
+	int verbosity = 0;
 	int opt;
-	while ((opt = getopt(argc, argv, "46fk:l:rs")) != EOF) {
+	while ((opt = getopt(argc, argv, "46fk:l:rsv")) != EOF) {
 		switch (opt) {
 		case 'f':
 			do_fork = 1;
@@ -909,6 +910,13 @@ int main(int argc, char *const *argv)
 			break;
 		case 's':
 			mode = MODE_SERVER;
+			break;
+		case 'v':
+			if (verbosity >= 3) {
+				usage();
+			}
+
+			verbosity++;
 			break;
 		case '4':
 			if (family != ADDR_FAMILY_ANY) {
@@ -949,6 +957,9 @@ int main(int argc, char *const *argv)
 	if (dir == DIR_REVERSED && do_fork != 0) {
 		usage();
 	}
+
+	assert(verbosity >= 0 && verbosity <= 3);
+	set_verbosity(verbosity);
 
 	char *listen_port = argv[optind];
 	char *dst_addr = argv[optind + 1];
