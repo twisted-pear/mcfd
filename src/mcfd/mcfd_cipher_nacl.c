@@ -180,6 +180,8 @@ int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
 	size_t i;
 	for (i = 0; i < crypto_secretbox_BOXZEROBYTES; i++) {
 		if (c[i] != 0) {
+			break_cipher(cipher);
+
 			goto sanitized_exit;
 		}
 	}
