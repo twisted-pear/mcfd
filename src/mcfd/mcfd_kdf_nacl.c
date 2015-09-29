@@ -29,7 +29,10 @@ int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 
 	size_t mlen;
 	if (salt != NULL) {
-		/* FIXME: overflow */
+		/* FIXME: should use a builtin where available */
+		if (SIZE_MAX - pass_len <= MCFD_SALT_BYTES) {
+			return 1;
+		}
 		mlen = pass_len + MCFD_SALT_BYTES;
 	} else {
 		mlen = pass_len;

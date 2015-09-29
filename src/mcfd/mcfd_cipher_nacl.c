@@ -104,7 +104,10 @@ int mcfd_cipher_encrypt(mcfd_cipher *cipher, const unsigned char *plaintext,
 		return 1;
 	}
 
-	/* FIXME: overflow */
+	/* FIXME: should use a builtin where available */
+	if (SIZE_MAX - plaintext_bytes <= crypto_secretbox_ZEROBYTES) {
+			return 1;
+	}
 	size_t mlen = plaintext_bytes + crypto_secretbox_ZEROBYTES;
 
 	unsigned char *m = malloc(mlen);
@@ -156,7 +159,10 @@ int mcfd_cipher_decrypt(mcfd_cipher *cipher, const unsigned char *ciphertext,
 		return 1;
 	}
 
-	/* FIXME: overflow */
+	/* FIXME: should use a builtin where available */
+	if (SIZE_MAX - ciphertext_bytes <= crypto_secretbox_ZEROBYTES) {
+			return 1;
+	}
 	size_t clen = ciphertext_bytes + crypto_secretbox_ZEROBYTES;
 
 	unsigned char *m = malloc(clen);
