@@ -117,9 +117,6 @@ enum op_dir {
 	DIR_REVERSED
 };
 
-static_assert(MCFD_RANDOM_MAX >= (MCFD_AUTH_RANDOM_BYTES + MCFD_NONCE_BYTES),
-		"MCFD_RANDOM_MAX too small");
-
 #define AUTH_BUF_SIZE MCFD_AUTH_PHASE2_SERVER_IN_BYTES
 static unsigned char auth_buf[AUTH_BUF_SIZE];
 static_assert(AUTH_BUF_SIZE >= MCFD_AUTH_RANDOM_BYTES, "AUTH_BUF_SIZE too small");
@@ -215,6 +212,8 @@ static int authenticate(int crypt_sock, const enum op_mode mode, mcfd_cipher *c_
 	assert(nonce_enc != NULL);
 	assert(nonce_dec != NULL);
 
+	static_assert(MCFD_RANDOM_REQUEST_MAX >= MCFD_AUTH_RANDOM_BYTES,
+			"MCFD_RANDOM_REQUEST_MAX too small");
 	if (mcfd_random_get(auth_buf, MCFD_AUTH_RANDOM_BYTES) != 0) {
 		return 1;
 	}
@@ -323,6 +322,8 @@ static int get_auth_nonce(const enum op_mode mode, int crypt_sock, unsigned char
 	assert(nonce != NULL);
 
 	if (mode == MODE_CLIENT) {
+		static_assert(MCFD_RANDOM_REQUEST_MAX >= MCFD_NONCE_BYTES,
+				"MCFD_RANDOM_REQUEST_MAX too small");
 		if (mcfd_random_get(nonce, MCFD_NONCE_BYTES) != 0) {
 			print_err("gen nonce", "failed to generate auth nonce");
 			return 1;

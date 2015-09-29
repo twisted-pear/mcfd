@@ -3,9 +3,11 @@
 
 #include <stdint.h>
 
-/* TODO: remove this limit */
-/* The maximum number of random bytes the application can request. */
-#define MCFD_RANDOM_MAX 192
+/* The maximum number of random bytes the application can request with a single call to
+ * mcfd_random_get().
+ * This limit is imposed by the getrandom() syscall which is more complicated to use if
+ * more than 256 bytes are requested. */
+#define MCFD_RANDOM_REQUEST_MAX 256
 
 int mcfd_random_init(void);
 void mcfd_random_destroy(void);

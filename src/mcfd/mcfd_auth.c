@@ -39,8 +39,6 @@ static void break_auth_context(mcfd_auth_context *ctx)
 	ctx->state = AUTH_CONTEXT_BROKEN;
 }
 
-static_assert(MCFD_RANDOM_MAX >= MCFD_AUTH_RANDOM_BYTES, "MCFD_RANDOM_MAX too small");
-
 mcfd_auth_context *mcfd_auth_init(const unsigned char *random_in)
 {
 	if (random_in == NULL) {

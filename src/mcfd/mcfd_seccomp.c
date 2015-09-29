@@ -104,6 +104,8 @@ int mcfd_seccomp_preconnect(int allow_fork)
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
 			SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP));
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getrandom), 1,
+			SCMP_A2(SCMP_CMP_EQ, 0));
 	if (allow_fork != 0) {
 		err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(clone), 0);
 		err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(waitpid), 0);
@@ -134,6 +136,8 @@ int mcfd_seccomp_preauth_server(void)
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
 			SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP));
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getrandom), 1,
+			SCMP_A2(SCMP_CMP_EQ, 0));
 
 	if (err != 0) {
 		seccomp_release(ctx);
@@ -157,6 +161,8 @@ int mcfd_seccomp_preauth_client(void)
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
 			SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP));
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getrandom), 1,
+			SCMP_A2(SCMP_CMP_EQ, 0));
 
 	if (err != 0) {
 		seccomp_release(ctx);
@@ -181,6 +187,8 @@ int mcfd_seccomp_preauth_sink(void)
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(prctl), 1,
 			SCMP_A0(SCMP_CMP_EQ, PR_SET_SECCOMP));
 	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(seccomp), 0);
+	err |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(getrandom), 1,
+			SCMP_A2(SCMP_CMP_EQ, 0));
 
 	if (err != 0) {
 		seccomp_release(ctx);
