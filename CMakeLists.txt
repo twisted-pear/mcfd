@@ -24,10 +24,10 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif ()
 
 configure_file (
-	"${PROJECT_SOURCE_DIR}/src/mcfd/mcfd_config.h.in"
-	"${PROJECT_BINARY_DIR}/src/mcfd/mcfd_config.h")
+	"${PROJECT_SOURCE_DIR}/include/mcfd/mcfd_config.h.in"
+	"${PROJECT_BINARY_DIR}/include/mcfd/mcfd_config.h")
 
-include_directories ("${PROJECT_BINARY_DIR}/src/mcfd")
+include_directories ("${PROJECT_BINARY_DIR}/include/mcfd")
 include_directories (include/common)
 include_directories (include/curve25519)
 include_directories (include/spongecrypt)
