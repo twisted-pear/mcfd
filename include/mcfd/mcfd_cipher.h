@@ -7,7 +7,7 @@
 
 #ifdef USE_NACL
 
-#	include <nacl/crypto_secretbox.h>
+#	include <crypto_secretbox.h>
 
 #	define MCFD_KEY_BITS (crypto_secretbox_KEYBYTES * 8)
 #	define MCFD_NONCE_BITS (crypto_secretbox_NONCEBYTES * 8)

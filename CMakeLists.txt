@@ -11,11 +11,17 @@ option (USE_NACL
 	"Use NaCl for encryption and key derivation" ON)
 
 if (USE_NACL)
-	if (NOT NACL_LOCATION)
-		set (NACL_LOCATION "/usr/lib/nacl/libnacl.a")
+	if (NOT NACL_LIBRARY_LOCATION)
+		set (NACL_LIBRARY_LOCATION "/usr/lib/nacl/libnacl.a")
 	endif ()
 	add_library (nacl STATIC IMPORTED)
-	set_target_properties (nacl PROPERTIES IMPORTED_LOCATION "${NACL_LOCATION}")
+	set_target_properties (nacl PROPERTIES IMPORTED_LOCATION
+		"${NACL_LIBRARY_LOCATION}")
+
+	if (NOT NACL_INCLUDE_LOCATION)
+		set (NACL_INCLUDE_LOCATION "/usr/include/nacl")
+	endif ()
+	include_directories ("${NACL_INCLUDE_LOCATION}")
 endif (USE_NACL)
 
 if (CMAKE_COMPILER_IS_GNUCC)

@@ -8,7 +8,7 @@
 #include "crypto_helpers.h"
 #include "mcfd_kdf.h"
 
-#include <nacl/crypto_hash.h>
+#include <crypto_hash.h>
 
 #ifndef USE_NACL
 #	error "USE_NACL not set, but mcfd_kdf_nacl used"

@@ -3,7 +3,7 @@
 
 #include <assert.h>
 
-#include <nacl/crypto_secretbox.h>
+#include <crypto_secretbox.h>
 
 #include "crypto_helpers.h"
 #include "mcfd_cipher.h"
