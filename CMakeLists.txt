@@ -8,7 +8,7 @@ endif ()
 option (USE_SECCOMP
 	"Use seccomp to filter unused system calls" ON)
 option (USE_NACL
-	"Use NaCl for encryption" ON)
+	"Use NaCl for encryption and key derivation" ON)
 
 if (USE_NACL)
 	if (NOT NACL_LOCATION)
@@ -54,13 +54,20 @@ get_property (S_CURVE25519 GLOBAL PROPERTY S_CURVE25519)
 get_property (H_MCFD GLOBAL PROPERTY H_MCFD)
 get_property (S_MCFD GLOBAL PROPERTY S_MCFD)
 
-add_executable (mcfd
+set (MCFD_FILES
 	${H_CRYPTO_COMMON} ${S_CRYPTO_COMMON}
-	${H_KECCAK} ${S_KECCAK}
-	${H_SPONGE} ${S_SPONGE}
-	${H_SPONGEWRAP} ${S_SPONGEWRAP}
 	${H_CURVE25519} ${S_CURVE25519}
 	${H_MCFD} ${S_MCFD})
+if (NOT USE_NACL)
+	set (MCFD_FILES
+		${MCFD_FILES}
+		${H_KECCAK} ${S_KECCAK}
+		${H_SPONGE} ${S_SPONGE}
+		${H_SPONGEWRAP} ${S_SPONGEWRAP})
+endif ()
+
+add_executable (mcfd
+	${MCFD_FILES})
 if (USE_SECCOMP)
 	target_link_libraries (mcfd seccomp)
 endif (USE_SECCOMP)

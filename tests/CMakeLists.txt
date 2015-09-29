@@ -189,12 +189,7 @@ add_test (run_test_curve25519_noncanon test_curve25519_noncanon)
 
 add_executable (mcfd_test
 	EXCLUDE_FROM_ALL
-	${H_CRYPTO_COMMON} ${S_CRYPTO_COMMON}
-	${H_KECCAK} ${S_KECCAK}
-	${H_SPONGE} ${S_SPONGE}
-	${H_SPONGEWRAP} ${S_SPONGEWRAP}
-	${H_CURVE25519} ${S_CURVE25519}
-	${H_MCFD} ${S_MCFD})
+	${MCFD_FILES})
 if (USE_SECCOMP)
 	target_link_libraries (mcfd_test seccomp)
 endif (USE_SECCOMP)
