@@ -1,7 +1,4 @@
-set (S_CRYPTO_COMMON
-        "${CMAKE_CURRENT_SOURCE_DIR}/crypto_helpers.c")
-set_property (GLOBAL APPEND PROPERTY S_CRYPTO_COMMON
-	${S_CRYPTO_COMMON})
+get_property (S_CRYPTO_COMMON GLOBAL PROPERTY S_CRYPTO_COMMON)
 
 add_subdirectory (keccak)
 

@@ -18,6 +18,7 @@ configure_file (
 	"${PROJECT_BINARY_DIR}/src/mcfd/mcfd_config.h")
 
 include_directories ("${PROJECT_BINARY_DIR}/src/mcfd")
+include_directories (include/common)
 include_directories (include/curve25519)
 include_directories (include/spongecrypt)
 include_directories (include/mcfd)

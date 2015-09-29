@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#include "permutation.h"
-
 void explicit_bzero(void *s, const size_t n)
 	__attribute__((noinline, noclone));
 
