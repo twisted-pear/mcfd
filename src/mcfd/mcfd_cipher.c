@@ -9,6 +9,10 @@
 #include <keccak/KeccakF-1600.h>
 #include <keccak/KeccakPad_10_1.h>
 
+#ifdef USE_NACL
+#	error "USE_NACL set, but mcfd_cipher used"
+#endif /* USE_NACL */
+
 #define SPONGEWRAP_RATE 1024
 static_assert(MCFD_BLOCK_SIZE + KECCAKPAD_10_1_MIN_BIT_LEN
 		+ 1 /* for spongewrap's frame bit */ <= SPONGEWRAP_RATE,

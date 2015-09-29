@@ -77,6 +77,8 @@ add_unit_test ("spongewrap" "")
 add_unit_test ("mcfd_auth" "${S_CRYPTO_COMMON}")
 add_unit_test ("mcfd_kdf" "${S_CRYPTO_COMMON}")
 add_unit_test ("mcfd_cipher" "${S_CRYPTO_COMMON}")
+set_target_properties (test_unit_mcfd_cipher PROPERTIES COMPILE_FLAGS
+	"-DOVERRIDE_NO_USE_NACL")
 
 get_property (S_TEST_GENKAT GLOBAL PROPERTY S_TEST_GENKAT)
 get_property (S_TEST_DUPLEX GLOBAL PROPERTY S_TEST_DUPLEX)

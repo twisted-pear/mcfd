@@ -1,15 +1,28 @@
 #ifndef __MCFD_CIPHER_H__
 #define __MCFD_CIPHER_H__
 
+#include <mcfd_config.h>
+
 #define MCFD_BLOCK_SIZE 1016
 
-#define MCFD_KEY_BITS 256
+#ifdef USE_NACL
+
+#	include <nacl/crypto_secretbox.h>
+
+#	define MCFD_KEY_BITS (crypto_secretbox_KEYBYTES * 8)
+#	define MCFD_NONCE_BITS (crypto_secretbox_NONCEBYTES * 8)
+#	define MCFD_TAG_BITS (crypto_secretbox_ZEROBYTES * 8)
+
+#else /* USE_NACL */
+
+#	define MCFD_KEY_BITS 256
+#	define MCFD_NONCE_BITS 256
+#	define MCFD_TAG_BITS 512
+
+#endif /* USE_NACL */
+
 #define MCFD_KEY_BYTES (MCFD_KEY_BITS / 8)
-
-#define MCFD_NONCE_BITS 256
 #define MCFD_NONCE_BYTES (MCFD_NONCE_BITS / 8)
-
-#define MCFD_TAG_BITS 512
 #define MCFD_TAG_BYTES (MCFD_TAG_BITS / 8)
 
 #include <stdint.h>

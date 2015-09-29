@@ -2,5 +2,14 @@
 #define __MCFD_CONFIG_H__
 
 #cmakedefine USE_SECCOMP
+#cmakedefine USE_NACL
+
+#ifdef OVERRIDE_USE_NACL
+#	define USE_NACL
+#endif /* OVERRIDE_USE_NACL */
+
+#ifdef OVERRIDE_NO_USE_NACL
+#	undef USE_NACL
+#endif /* OVERRIDE_NO_USE_NACL */
 
 #endif /* __MCFD_CONFIG_H__ */
