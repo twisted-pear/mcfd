@@ -8,6 +8,11 @@ set (S_MCFD_KDF
 set_property (GLOBAL APPEND PROPERTY S_MCFD_KDF
 	${S_MCFD_KDF})
 
+set (S_MCFD_KDF_NACL
+	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_kdf_nacl.c")
+set_property (GLOBAL APPEND PROPERTY S_MCFD_KDF_NACL
+	${S_MCFD_KDF_NACL})
+
 set (S_MCFD_CIPHER
 	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_cipher.c")
 set_property (GLOBAL APPEND PROPERTY S_MCFD_CIPHER
@@ -25,7 +30,6 @@ set_property (GLOBAL APPEND PROPERTY H_MCFD
 set_property (GLOBAL APPEND PROPERTY S_MCFD
 	"${S_MCFD_AUTH}"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_common.c"
-	"${S_MCFD_KDF}"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_main.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_net.c"
 	"${CMAKE_CURRENT_SOURCE_DIR}/mcfd_random.c")
@@ -39,8 +43,10 @@ endif (USE_SECCOMP)
 
 if (USE_NACL)
 	set_property (GLOBAL APPEND PROPERTY S_MCFD
+		"${S_MCFD_KDF_NACL}"
 		"${S_MCFD_CIPHER_NACL}")
 else (USE_NACL)
 	set_property (GLOBAL APPEND PROPERTY S_MCFD
+		"${S_MCFD_KDF}"
 		"${S_MCFD_CIPHER}")
 endif (USE_NACL)
