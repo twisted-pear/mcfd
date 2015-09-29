@@ -194,6 +194,9 @@ add_executable (mcfd_test
 if (USE_SECCOMP)
 	target_link_libraries (mcfd_test seccomp)
 endif (USE_SECCOMP)
+if (USE_NACL)
+	target_link_libraries (mcfd_test nacl)
+endif (USE_NACL)
 add_test (build_mcfd_test "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target mcfd_test)
 
