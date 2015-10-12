@@ -350,7 +350,7 @@ static mcfd_cipher *get_cipher(unsigned char *nonce, unsigned char *key)
 	mcfd_cipher *c = mcfd_cipher_init(nonce, key);
 
 	explicit_bzero(key, MCFD_KEY_BYTES);
-	explicit_bzero(nonce, MCFD_KEY_BYTES);
+	explicit_bzero(nonce, MCFD_NONCE_BYTES);
 
 	return c;
 }
