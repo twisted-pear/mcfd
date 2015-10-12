@@ -10,9 +10,9 @@
 #include <keccak/KeccakF-1600.h>
 #include <keccak/KeccakPad_10_1.h>
 
-#ifdef USE_NACL
-#	error "USE_NACL set, but mcfd_kdf used"
-#endif /* USE_NACL */
+#ifdef USE_SODIUM
+#	error "USE_SODIUM set, but mcfd_kdf used"
+#endif /* USE_SODIUM */
 
 #define KDF_RATE 576
 

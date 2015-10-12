@@ -50,15 +50,12 @@ Since nobody who does has checked mcfd's code, it is likely to decrease security
 Compilation
 -----------
 
-I only tested mcfd on Linux and with GCC. You'll also need cmake 2.8 or later, NaCl and
-libseccomp. To compile it just run `make`. If everything goes well you'll find the mcfd
-binary under `build/mcfd`.
-
-If necessary you can specify the paths to the NaCl library and header files manually with
-the `NACL_LIBRARY_LOCATION` and `NACL_INCLUDE_LOCATION` cmake variables.
+I only tested mcfd on Linux and with GCC. You'll also need cmake 2.8 or later, libsodium
+and libseccomp. To compile it just run `make`. If everything goes well you'll find the
+mcfd binary under `build/mcfd`.
 
 You can turn off SECCOMP support via the `USE_SECCOMP` cmake variable. To use mcfd's own
-Keccak based crypto you can disable NaCl via the `USE_NACL` cmake variable.
+Keccak based crypto you can disable libsodium via the `USE_SODIUM` cmake variable.
 
 Usage
 -----
@@ -106,8 +103,8 @@ You'll need cmocka and netcat6 to run the (incomplete) test suite. Just run `mak
 Crypto
 ------
 
-mcfd uses [NaCl](http://nacl.cr.yp.to) for authentication and encryption and
-[Curve25519](http://cr.yp.to/ecdh.html) for key exchange.
+mcfd uses [libsodium](https://github.com/jedisct1/libsodium) for authentication and
+encryption and [Curve25519](http://cr.yp.to/ecdh.html) for key exchange.
 
 Alternatively mcfd can use [SpongeWrap](http://sponge.noekeon.org/SpongeDuplex.pdf) for
 authentication and encryption. The permutation used for spongewrap is the

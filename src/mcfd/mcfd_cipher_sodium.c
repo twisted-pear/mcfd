@@ -3,14 +3,14 @@
 
 #include <assert.h>
 
-#include <crypto_secretbox.h>
+#include <sodium/crypto_secretbox.h>
 
 #include "crypto_helpers.h"
 #include "mcfd_cipher.h"
 
-#ifndef USE_NACL
-#	error "USE_NACL not set, but mcfd_cipher_nacl used"
-#endif /* USE_NACL */
+#ifndef USE_SODIUM
+#	error "USE_SODIUM not set, but mcfd_cipher_sodium used"
+#endif /* USE_SODIUM */
 
 static_assert(MCFD_TAG_BITS == crypto_secretbox_ZEROBYTES * 8, "MCFD_TAG_BITS invalid");
 static_assert(MCFD_TAG_BYTES == crypto_secretbox_ZEROBYTES, "MCFD_TAG_BYTES invalid");

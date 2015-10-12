@@ -2,14 +2,14 @@
 #define __MCFD_CONFIG_H__
 
 #cmakedefine USE_SECCOMP
-#cmakedefine USE_NACL
+#cmakedefine USE_SODIUM
 
-#ifdef OVERRIDE_USE_NACL
-#	define USE_NACL
-#endif /* OVERRIDE_USE_NACL */
+#ifdef OVERRIDE_USE_SODIUM
+#	define USE_SODIUM
+#endif /* OVERRIDE_USE_SODIUM */
 
-#ifdef OVERRIDE_NO_USE_NACL
-#	undef USE_NACL
-#endif /* OVERRIDE_NO_USE_NACL */
+#ifdef OVERRIDE_NO_USE_SODIUM
+#	undef USE_SODIUM
+#endif /* OVERRIDE_NO_USE_SODIUM */
 
 #endif /* __MCFD_CONFIG_H__ */

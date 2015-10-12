@@ -5,21 +5,21 @@
 
 #define MCFD_BLOCK_SIZE 1016
 
-#ifdef USE_NACL
+#ifdef USE_SODIUM
 
-#	include <crypto_secretbox.h>
+#	include <sodium/crypto_secretbox.h>
 
 #	define MCFD_KEY_BITS (crypto_secretbox_KEYBYTES * 8)
 #	define MCFD_NONCE_BITS (crypto_secretbox_NONCEBYTES * 8)
 #	define MCFD_TAG_BITS (crypto_secretbox_ZEROBYTES * 8)
 
-#else /* USE_NACL */
+#else /* USE_SODIUM */
 
 #	define MCFD_KEY_BITS 256
 #	define MCFD_NONCE_BITS 256
 #	define MCFD_TAG_BITS 512
 
-#endif /* USE_NACL */
+#endif /* USE_SODIUM */
 
 #define MCFD_KEY_BYTES (MCFD_KEY_BITS / 8)
 #define MCFD_NONCE_BYTES (MCFD_NONCE_BITS / 8)

@@ -7,22 +7,8 @@ endif ()
 
 option (USE_SECCOMP
 	"Use seccomp to filter unused system calls" ON)
-option (USE_NACL
-	"Use NaCl for encryption and key derivation" ON)
-
-if (USE_NACL)
-	if (NOT NACL_LIBRARY_LOCATION)
-		set (NACL_LIBRARY_LOCATION "/usr/lib/nacl/libnacl.a")
-	endif ()
-	add_library (nacl STATIC IMPORTED)
-	set_target_properties (nacl PROPERTIES IMPORTED_LOCATION
-		"${NACL_LIBRARY_LOCATION}")
-
-	if (NOT NACL_INCLUDE_LOCATION)
-		set (NACL_INCLUDE_LOCATION "/usr/include/nacl")
-	endif ()
-	include_directories ("${NACL_INCLUDE_LOCATION}")
-endif (USE_NACL)
+option (USE_SODIUM
+	"Use libsodium for encryption and key derivation" ON)
 
 if (CMAKE_COMPILER_IS_GNUCC)
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra -Wall -pedantic -std=c11 -D_XOPEN_SOURCE=500")
@@ -64,7 +50,7 @@ set (MCFD_FILES
 	${H_CRYPTO_COMMON} ${S_CRYPTO_COMMON}
 	${H_CURVE25519} ${S_CURVE25519}
 	${H_MCFD} ${S_MCFD})
-if (NOT USE_NACL)
+if (NOT USE_SODIUM)
 	set (MCFD_FILES
 		${MCFD_FILES}
 		${H_KECCAK} ${S_KECCAK}
@@ -77,9 +63,9 @@ add_executable (mcfd
 if (USE_SECCOMP)
 	target_link_libraries (mcfd seccomp)
 endif (USE_SECCOMP)
-if (USE_NACL)
-	target_link_libraries (mcfd nacl)
-endif (USE_NACL)
+if (USE_SODIUM)
+	target_link_libraries (mcfd sodium)
+endif (USE_SODIUM)
 
 get_property (H_SPONGEPRG GLOBAL PROPERTY H_SPONGEPRG)
 get_property (S_SPONGEPRG GLOBAL PROPERTY S_SPONGEPRG)

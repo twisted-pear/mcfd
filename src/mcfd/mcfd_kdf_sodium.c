@@ -8,11 +8,11 @@
 #include "crypto_helpers.h"
 #include "mcfd_kdf.h"
 
-#include <crypto_hash.h>
+#include <sodium/crypto_hash.h>
 
-#ifndef USE_NACL
-#	error "USE_NACL not set, but mcfd_kdf_nacl used"
-#endif /* USE_NACL */
+#ifndef USE_SODIUM
+#	error "USE_SODIUM not set, but mcfd_kdf_sodium used"
+#endif /* USE_SODIUM */
 
 int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 		const size_t iterations, unsigned char *key, const size_t key_bits)

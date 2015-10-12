@@ -77,10 +77,10 @@ add_unit_test ("spongewrap" "")
 add_unit_test ("mcfd_auth" "${S_CRYPTO_COMMON}")
 add_unit_test ("mcfd_kdf" "${S_CRYPTO_COMMON}")
 set_target_properties (test_unit_mcfd_kdf PROPERTIES COMPILE_FLAGS
-	"-DOVERRIDE_NO_USE_NACL")
+	"-DOVERRIDE_NO_USE_SODIUM")
 add_unit_test ("mcfd_cipher" "${S_CRYPTO_COMMON}")
 set_target_properties (test_unit_mcfd_cipher PROPERTIES COMPILE_FLAGS
-	"-DOVERRIDE_NO_USE_NACL")
+	"-DOVERRIDE_NO_USE_SODIUM")
 
 get_property (S_TEST_GENKAT GLOBAL PROPERTY S_TEST_GENKAT)
 get_property (S_TEST_DUPLEX GLOBAL PROPERTY S_TEST_DUPLEX)
@@ -193,9 +193,9 @@ add_executable (mcfd_test
 if (USE_SECCOMP)
 	target_link_libraries (mcfd_test seccomp)
 endif (USE_SECCOMP)
-if (USE_NACL)
-	target_link_libraries (mcfd_test nacl)
-endif (USE_NACL)
+if (USE_SODIUM)
+	target_link_libraries (mcfd_test sodium)
+endif (USE_SODIUM)
 add_test (build_mcfd_test "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR}
 	--target mcfd_test)
 
