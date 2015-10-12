@@ -110,8 +110,8 @@ Alternatively mcfd can use [SpongeWrap](http://sponge.noekeon.org/SpongeDuplex.p
 authentication and encryption. The permutation used for spongewrap is the
 [Keccak](http://keccak.noekeon.org/) permutation.
 
-For random number generation mcfd relies exclusively on the linux `getrandom` syscall for
-now.
+For random number generation mcfd relies on the Linux `getrandom` syscall where it is
+available and on `/dev/urandom` where it is not.
 
 I reused parts of the testing code from the Keccak code package. The Curve25519
 implementation was written by Adam Langley and can be found
