@@ -1,3 +1,5 @@
+migrate to new cmocka API
+exec after fork?
 add section about deps to readme, also list optional deps for test cases and stuff
 add actual documentation
 recheck auth protocol overall
