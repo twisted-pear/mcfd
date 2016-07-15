@@ -15,7 +15,7 @@
 
 static unsigned char *zerobuf = NULL;
 
-static void explicit_bzero_setup(void **state __attribute__((unused)))
+static int explicit_bzero_setup(void **state __attribute__((unused)))
 {
 	zerobuf = calloc(ZEROBUF_SIZE, 1);
 	assert_non_null(zerobuf);
@@ -26,11 +26,15 @@ static void explicit_bzero_setup(void **state __attribute__((unused)))
 	for (i = 0; i < ZEROBUF_SIZE; i++) {
 		assert_int_equal(zerobuf[i], ZEROBUF_PATTERN);
 	}
+
+	return 0;
 }
 
-static void explicit_bzero_teardown(void **state __attribute__((unused)))
+static int explicit_bzero_teardown(void **state __attribute__((unused)))
 {
 	free(zerobuf);
+
+	return 0;
 }
 
 static void explicit_bzero_n_zero(void **state __attribute__((unused)))
@@ -86,7 +90,7 @@ static void explicit_bzero_normal(void **state __attribute__((unused)))
 static unsigned char *cmpbuf1 = NULL;
 static unsigned char *cmpbuf2 = NULL;
 
-static void timingsafe_bcmp_setup(void **state __attribute__((unused)))
+static int timingsafe_bcmp_setup(void **state __attribute__((unused)))
 {
 	cmpbuf1 = calloc(CMPBUF_SIZE, 1);
 	assert_non_null(cmpbuf1);
@@ -102,12 +106,16 @@ static void timingsafe_bcmp_setup(void **state __attribute__((unused)))
 		assert_int_equal(cmpbuf1[i], CMPBUF_PATTERN);
 		assert_int_equal(cmpbuf2[i], CMPBUF_PATTERN);
 	}
+
+	return 0;
 }
 
-static void timingsafe_bcmp_teardown(void **state __attribute__((unused)))
+static int timingsafe_bcmp_teardown(void **state __attribute__((unused)))
 {
 	free(cmpbuf1);
 	free(cmpbuf2);
+
+	return 0;
 }
 
 
@@ -209,41 +217,41 @@ int run_unit_tests(void)
 {
 	int res = 0;
 
-	const UnitTest explicit_bzero_tests[] = {
-		unit_test_setup_teardown(explicit_bzero_n_zero, explicit_bzero_setup,
+	const struct CMUnitTest explicit_bzero_tests[] = {
+		cmocka_unit_test_setup_teardown(explicit_bzero_n_zero, explicit_bzero_setup,
 				explicit_bzero_teardown),
-		unit_test_setup_teardown(explicit_bzero_s_null_n_zero,
+		cmocka_unit_test_setup_teardown(explicit_bzero_s_null_n_zero,
 				explicit_bzero_setup, explicit_bzero_teardown),
-		unit_test_setup_teardown(explicit_bzero_zero, explicit_bzero_setup,
+		cmocka_unit_test_setup_teardown(explicit_bzero_zero, explicit_bzero_setup,
 				explicit_bzero_teardown),
-		unit_test_setup_teardown(explicit_bzero_normal, explicit_bzero_setup,
+		cmocka_unit_test_setup_teardown(explicit_bzero_normal, explicit_bzero_setup,
 				explicit_bzero_teardown)
 	};
 
 	fprintf(stderr, "explicit_bzero:\n");
-	res |= run_tests(explicit_bzero_tests);
+	res |= cmocka_run_group_tests(explicit_bzero_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
 	/* TODO: test data independent timing too */
-	const UnitTest timingsafe_bcmp_tests[] = {
-		unit_test_setup_teardown(timingsafe_bcmp_n_zero, timingsafe_bcmp_setup,
+	const struct CMUnitTest timingsafe_bcmp_tests[] = {
+		cmocka_unit_test_setup_teardown(timingsafe_bcmp_n_zero, timingsafe_bcmp_setup,
 				timingsafe_bcmp_teardown),
-		unit_test_setup_teardown(timingsafe_bcmp_s1_null_n_zero,
+		cmocka_unit_test_setup_teardown(timingsafe_bcmp_s1_null_n_zero,
 				timingsafe_bcmp_setup, timingsafe_bcmp_teardown),
-		unit_test_setup_teardown(timingsafe_bcmp_s2_null_n_zero,
+		cmocka_unit_test_setup_teardown(timingsafe_bcmp_s2_null_n_zero,
 				timingsafe_bcmp_setup, timingsafe_bcmp_teardown),
-		unit_test_setup_teardown(timingsafe_bcmp_s1_null_s2_null_n_zero,
+		cmocka_unit_test_setup_teardown(timingsafe_bcmp_s1_null_s2_null_n_zero,
 				timingsafe_bcmp_setup, timingsafe_bcmp_teardown),
-		unit_test_setup_teardown(timingsafe_bcmp_equal, timingsafe_bcmp_setup,
+		cmocka_unit_test_setup_teardown(timingsafe_bcmp_equal, timingsafe_bcmp_setup,
 				timingsafe_bcmp_teardown),
-		unit_test_setup_teardown(timingsafe_bcmp_not_equal_early,
+		cmocka_unit_test_setup_teardown(timingsafe_bcmp_not_equal_early,
 				timingsafe_bcmp_setup, timingsafe_bcmp_teardown),
-		unit_test_setup_teardown(timingsafe_bcmp_not_equal_late,
+		cmocka_unit_test_setup_teardown(timingsafe_bcmp_not_equal_late,
 				timingsafe_bcmp_setup, timingsafe_bcmp_teardown)
 	};
 
 	fprintf(stderr, "timingsafe_bcmp:\n");
-	res |= run_tests(timingsafe_bcmp_tests);
+	res |= cmocka_run_group_tests(timingsafe_bcmp_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
 	return res;

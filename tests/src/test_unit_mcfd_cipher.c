@@ -121,7 +121,7 @@ static spongewrap *w;
 
 static int order = 0;
 
-static void mcfd_cipher_init_setup(void **state __attribute__((unused)))
+static int mcfd_cipher_init_setup(void **state __attribute__((unused)))
 {
 	key = calloc((KEY_BITS + 7) / 8, 1);
 	assert_non_null(key);
@@ -149,9 +149,11 @@ static void mcfd_cipher_init_setup(void **state __attribute__((unused)))
 	w->rate = RATE;
 	w->block_size = BLOCK_SIZE;
 	w->internal = &order;
+
+	return 0;
 }
 
-static void mcfd_cipher_init_teardown(void **state __attribute__((unused)))
+static int mcfd_cipher_init_teardown(void **state __attribute__((unused)))
 {
 	size_t i;
 	for (i = 0; i < (KEY_BITS + 7) / 8; i++) {
@@ -167,6 +169,8 @@ static void mcfd_cipher_init_teardown(void **state __attribute__((unused)))
 	free(f);
 	free(p);
 	free(w);
+
+	return 0;
 }
 
 static void mcfd_cipher_init_success(void)
@@ -324,7 +328,7 @@ static void mcfd_cipher_init_normal(void **state __attribute__((unused)))
 
 mcfd_cipher *cipher;
 
-static void mcfd_cipher_setup(void **state __attribute__((unused)))
+static int mcfd_cipher_setup(void **state __attribute__((unused)))
 {
 	mcfd_cipher_init_setup(state);
 
@@ -332,15 +336,19 @@ static void mcfd_cipher_setup(void **state __attribute__((unused)))
 
 	cipher = mcfd_cipher_init(init_nonce, key);
 	assert_non_null(cipher);
+
+	return 0;
 }
 
-static void mcfd_cipher_teardown(void **state __attribute__((unused)))
+static int mcfd_cipher_teardown(void **state __attribute__((unused)))
 {
 	mcfd_cipher_free_success();
 
 	mcfd_cipher_free(cipher);
 
 	mcfd_cipher_init_teardown(state);
+
+	return 0;
 }
 
 static void mcfd_cipher_encrypt_normal(void **state __attribute__((unused)))
@@ -355,45 +363,45 @@ int run_unit_tests(void)
 {
 	int res = 0;
 
-	const UnitTest mcfd_cipher_init_tests[] = {
-		unit_test_setup_teardown(mcfd_cipher_init_key_null,
+	const struct CMUnitTest mcfd_cipher_init_tests[] = {
+		cmocka_unit_test_setup_teardown(mcfd_cipher_init_key_null,
 				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
-		unit_test_setup_teardown(mcfd_cipher_init_nonce_null,
+		cmocka_unit_test_setup_teardown(mcfd_cipher_init_nonce_null,
 				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
-		unit_test_setup_teardown(mcfd_cipher_init_f_init_fail,
+		cmocka_unit_test_setup_teardown(mcfd_cipher_init_f_init_fail,
 				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
-		unit_test_setup_teardown(mcfd_cipher_init_p_init_fail,
+		cmocka_unit_test_setup_teardown(mcfd_cipher_init_p_init_fail,
 				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
-		unit_test_setup_teardown(mcfd_cipher_init_w_init_fail,
+		cmocka_unit_test_setup_teardown(mcfd_cipher_init_w_init_fail,
 				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
-		unit_test_setup_teardown(mcfd_cipher_init_noalloc,
+		cmocka_unit_test_setup_teardown(mcfd_cipher_init_noalloc,
 				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
-		unit_test_setup_teardown(mcfd_cipher_init_alloc_limited,
+		cmocka_unit_test_setup_teardown(mcfd_cipher_init_alloc_limited,
 				mcfd_cipher_init_setup, mcfd_cipher_init_teardown),
-		unit_test_setup_teardown(mcfd_cipher_init_normal,
+		cmocka_unit_test_setup_teardown(mcfd_cipher_init_normal,
 				mcfd_cipher_init_setup, mcfd_cipher_init_teardown)
 	};
 
 	fprintf(stderr, "mcfd_cipher_init:\n");
-	res |= run_tests(mcfd_cipher_init_tests);
+	res |= cmocka_run_group_tests(mcfd_cipher_init_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest mcfd_cipher_encrypt_tests[] = {
-		unit_test_setup_teardown(mcfd_cipher_encrypt_normal,
+	const struct CMUnitTest mcfd_cipher_encrypt_tests[] = {
+		cmocka_unit_test_setup_teardown(mcfd_cipher_encrypt_normal,
 				mcfd_cipher_setup, mcfd_cipher_teardown)
 	};
 
 	fprintf(stderr, "mcfd_cipher_encrypt:\n");
-	res |= run_tests(mcfd_cipher_encrypt_tests);
+	res |= cmocka_run_group_tests(mcfd_cipher_encrypt_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest mcfd_cipher_decrypt_tests[] = {
-		unit_test_setup_teardown(mcfd_cipher_decrypt_normal,
+	const struct CMUnitTest mcfd_cipher_decrypt_tests[] = {
+		cmocka_unit_test_setup_teardown(mcfd_cipher_decrypt_normal,
 				mcfd_cipher_setup, mcfd_cipher_teardown)
 	};
 
 	fprintf(stderr, "mcfd_cipher_decrypt:\n");
-	res |= run_tests(mcfd_cipher_decrypt_tests);
+	res |= cmocka_run_group_tests(mcfd_cipher_decrypt_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
 	return res;

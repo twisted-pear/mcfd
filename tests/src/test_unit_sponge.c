@@ -25,7 +25,7 @@
 static permutation *f = NULL;
 static pad *p = NULL;
 
-static void sponge_init_setup(void **state __attribute__((unused)))
+static int sponge_init_setup(void **state __attribute__((unused)))
 {
 	f = calloc(1, sizeof(permutation));
 	assert_non_null(f);
@@ -37,12 +37,16 @@ static void sponge_init_setup(void **state __attribute__((unused)))
 
 	p->rate = CREATE_RATE;
 	p->min_bit_len = CREATE_MIN_RATE;
+
+	return 0;
 }
 
-static void sponge_init_teardown(void **state __attribute__((unused)))
+static int sponge_init_teardown(void **state __attribute__((unused)))
 {
 	free(f);
 	free(p);
+
+	return 0;
 }
 
 static void sponge_init_f_null(void **state __attribute__((unused)))
@@ -476,20 +480,24 @@ static void teardown_testbuf(void)
 	free(testbuf);
 }
 
-static void sponge_absorb_setup(void **state __attribute__((unused)))
+static int sponge_absorb_setup(void **state __attribute__((unused)))
 {
 	sponge_order = 0;
 
 	setup_sponge(CREATE_RATE);
 
 	setup_testbuf();
+
+	return 0;
 }
 
-static void sponge_absorb_teardown(void **state __attribute__((unused)))
+static int sponge_absorb_teardown(void **state __attribute__((unused)))
 {
 	teardown_sponge();
 
 	teardown_testbuf();
+
+	return 0;
 }
 
 static void sponge_absorb_sp_null(void **state __attribute__((unused)))
@@ -820,7 +828,7 @@ static void sponge_absorb_diff_rates(void **state __attribute__((unused)))
 	teardown_testbuf();
 }
 
-static void sponge_squeeze_setup(void **state __attribute__((unused)))
+static int sponge_squeeze_setup(void **state __attribute__((unused)))
 {
 	sponge_order = 0;
 
@@ -829,13 +837,17 @@ static void sponge_squeeze_setup(void **state __attribute__((unused)))
 	setup_testbuf();
 
 	sponge_absorb_success(0);
+
+	return 0;
 }
 
-static void sponge_squeeze_teardown(void **state __attribute__((unused)))
+static int sponge_squeeze_teardown(void **state __attribute__((unused)))
 {
 	teardown_sponge();
 
 	teardown_testbuf();
+
+	return 0;
 }
 
 static void sponge_squeeze_sp_null(void **state __attribute__((unused)))
@@ -1125,99 +1137,99 @@ int run_unit_tests(void)
 {
 	int res = 0;
 
-	const UnitTest sponge_init_tests[] = {
-		unit_test_setup_teardown(sponge_init_f_null, sponge_init_setup,
+	const struct CMUnitTest sponge_init_tests[] = {
+		cmocka_unit_test_setup_teardown(sponge_init_f_null, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_p_null, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_p_null, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_rate_zero, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_rate_zero, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_width_zero, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_width_zero, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_rate_zero_width_zero,
+		cmocka_unit_test_setup_teardown(sponge_init_rate_zero_width_zero,
 				sponge_init_setup, sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_rate_gt_width, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_rate_gt_width, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_rate_eq_width, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_rate_eq_width, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_rate_ne_prate, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_rate_ne_prate, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_rate_lt_minrate, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_rate_lt_minrate, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_rate_eq_minrate, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_rate_eq_minrate, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_rate_odd, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_rate_odd, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_width_odd, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_width_odd, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_noalloc, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_noalloc, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_alloc_limited, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_alloc_limited, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_normal, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_normal, sponge_init_setup,
 				sponge_init_teardown),
-		unit_test_setup_teardown(sponge_init_rate_max, sponge_init_setup,
+		cmocka_unit_test_setup_teardown(sponge_init_rate_max, sponge_init_setup,
 				sponge_init_teardown)
 	};
 
 	fprintf(stderr, "sponge_init:\n");
-	res |= run_tests(sponge_init_tests);
+	res |= cmocka_run_group_tests(sponge_init_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest sponge_absorb_tests[] = {
-		unit_test_setup_teardown(sponge_absorb_sp_null,
+	const struct CMUnitTest sponge_absorb_tests[] = {
+		cmocka_unit_test_setup_teardown(sponge_absorb_sp_null,
 				sponge_absorb_setup, sponge_absorb_teardown),
-		unit_test_setup_teardown(sponge_absorb_in_null,
+		cmocka_unit_test_setup_teardown(sponge_absorb_in_null,
 				sponge_absorb_setup, sponge_absorb_teardown),
-		unit_test_setup_teardown(sponge_absorb_wrong_phase,
+		cmocka_unit_test_setup_teardown(sponge_absorb_wrong_phase,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
-		unit_test_setup_teardown(sponge_absorb_len_zero,
+		cmocka_unit_test_setup_teardown(sponge_absorb_len_zero,
 				sponge_absorb_setup, sponge_absorb_teardown),
-		unit_test_setup_teardown(sponge_absorb_len_gt_rate,
+		cmocka_unit_test_setup_teardown(sponge_absorb_len_gt_rate,
 				sponge_absorb_setup, sponge_absorb_teardown),
-		unit_test_setup_teardown(sponge_absorb_len_eq_rate,
+		cmocka_unit_test_setup_teardown(sponge_absorb_len_eq_rate,
 				sponge_absorb_setup, sponge_absorb_teardown),
-		unit_test_setup_teardown(sponge_absorb_len_1_left,
+		cmocka_unit_test_setup_teardown(sponge_absorb_len_1_left,
 				sponge_absorb_setup, sponge_absorb_teardown),
-		unit_test(sponge_absorb_xor_fail),
-		unit_test(sponge_absorb_f_fail),
-		unit_test_setup_teardown(sponge_absorb_pf_fail,
+		cmocka_unit_test(sponge_absorb_xor_fail),
+		cmocka_unit_test(sponge_absorb_f_fail),
+		cmocka_unit_test_setup_teardown(sponge_absorb_pf_fail,
 				sponge_absorb_setup, sponge_absorb_teardown),
-		unit_test(sponge_absorb_multiple_diff_splits),
-		unit_test(sponge_absorb_diff_lens),
-		unit_test(sponge_absorb_diff_rates)
+		cmocka_unit_test(sponge_absorb_multiple_diff_splits),
+		cmocka_unit_test(sponge_absorb_diff_lens),
+		cmocka_unit_test(sponge_absorb_diff_rates)
 	};
 
 	fprintf(stderr, "sponge_absorb:\n");
-	res |= run_tests(sponge_absorb_tests);
+	res |= cmocka_run_group_tests(sponge_absorb_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest sponge_squeeze_tests[] = {
-		unit_test_setup_teardown(sponge_squeeze_sp_null,
+	const struct CMUnitTest sponge_squeeze_tests[] = {
+		cmocka_unit_test_setup_teardown(sponge_squeeze_sp_null,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
-		unit_test_setup_teardown(sponge_squeeze_out_null,
+		cmocka_unit_test_setup_teardown(sponge_squeeze_out_null,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
-		unit_test_setup_teardown(sponge_squeeze_wrong_phase,
+		cmocka_unit_test_setup_teardown(sponge_squeeze_wrong_phase,
 				sponge_absorb_setup, sponge_absorb_teardown),
-		unit_test_setup_teardown(sponge_squeeze_len_zero,
+		cmocka_unit_test_setup_teardown(sponge_squeeze_len_zero,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
-		unit_test_setup_teardown(sponge_squeeze_len_gt_rate,
+		cmocka_unit_test_setup_teardown(sponge_squeeze_len_gt_rate,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
-		unit_test_setup_teardown(sponge_squeeze_len_eq_rate,
+		cmocka_unit_test_setup_teardown(sponge_squeeze_len_eq_rate,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
 		/* Squeeze doesn't support single bits. */
-		unit_test_setup_teardown(sponge_squeeze_len_8_left,
+		cmocka_unit_test_setup_teardown(sponge_squeeze_len_8_left,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
-		unit_test_setup_teardown(sponge_squeeze_len_odd,
+		cmocka_unit_test_setup_teardown(sponge_squeeze_len_odd,
 				sponge_squeeze_setup, sponge_squeeze_teardown),
-		unit_test(sponge_squeeze_get_fail),
-		unit_test(sponge_squeeze_f_fail),
-		unit_test(sponge_squeeze_multiple_diff_splits),
-		unit_test(sponge_squeeze_diff_rates)
+		cmocka_unit_test(sponge_squeeze_get_fail),
+		cmocka_unit_test(sponge_squeeze_f_fail),
+		cmocka_unit_test(sponge_squeeze_multiple_diff_splits),
+		cmocka_unit_test(sponge_squeeze_diff_rates)
 	};
 
 	fprintf(stderr, "sponge_sqeeze:\n");
-	res |= run_tests(sponge_squeeze_tests);
+	res |= cmocka_run_group_tests(sponge_squeeze_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
 	return res;

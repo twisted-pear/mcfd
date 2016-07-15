@@ -152,17 +152,21 @@ int mcfd_kdf(const char *pass, const size_t pass_len, const unsigned char *salt,
 
 static unsigned char random_bytes[MCFD_AUTH_RANDOM_BYTES];
 
-static void mcfd_auth_init_setup(void **state __attribute__((unused)))
+static int mcfd_auth_init_setup(void **state __attribute__((unused)))
 {
 	memset(random_bytes, RANDOM_PATTERN, MCFD_AUTH_RANDOM_BYTES);
+
+	return 0;
 }
 
-static void mcfd_auth_init_teardown(void **state __attribute__((unused)))
+static int mcfd_auth_init_teardown(void **state __attribute__((unused)))
 {
 	size_t i;
 	for (i = 0; i < MCFD_AUTH_RANDOM_BYTES; i++) {
 		assert_int_equal(random_bytes[i], RANDOM_PATTERN);
 	}
+
+	return 0;
 }
 
 static void mcfd_auth_init_success(void)
@@ -238,7 +242,7 @@ static void mcfd_auth_init_normal(void **state __attribute__((unused)))
 mcfd_auth_context *ctx;
 unsigned char *out_bytes;
 
-static void mcfd_auth_phase1_srv_setup(void **state __attribute__((unused)))
+static int mcfd_auth_phase1_srv_setup(void **state __attribute__((unused)))
 {
 	mcfd_auth_init_setup(state);
 
@@ -250,15 +254,19 @@ static void mcfd_auth_phase1_srv_setup(void **state __attribute__((unused)))
 
 	ctx = mcfd_auth_init(random_bytes);
 	assert_non_null(ctx);
+
+	return 0;
 }
 
-static void mcfd_auth_phase1_srv_teardown(void **state __attribute__((unused)))
+static int mcfd_auth_phase1_srv_teardown(void **state __attribute__((unused)))
 {
 	mcfd_auth_free(ctx);
 
 	free(out_bytes);
 
 	mcfd_auth_init_teardown(state);
+
+	return 0;
 }
 
 static void mcfd_auth_phase1_server_ctx_null(void **state __attribute__((unused)))
@@ -309,7 +317,7 @@ static void mcfd_auth_phase1_server_normal(void **state __attribute__((unused)))
 mcfd_cipher *c_auth;
 unsigned char *in_bytes;
 
-static void mcfd_auth_phase1_clt_setup(void **state __attribute__((unused)))
+static int mcfd_auth_phase1_clt_setup(void **state __attribute__((unused)))
 {
 	mcfd_auth_init_setup(state);
 
@@ -329,9 +337,11 @@ static void mcfd_auth_phase1_clt_setup(void **state __attribute__((unused)))
 
 	ctx = mcfd_auth_init(random_bytes);
 	assert_non_null(ctx);
+
+	return 0;
 }
 
-static void mcfd_auth_phase1_clt_teardown(void **state __attribute__((unused)))
+static int mcfd_auth_phase1_clt_teardown(void **state __attribute__((unused)))
 {
 	mcfd_auth_free(ctx);
 
@@ -345,6 +355,8 @@ static void mcfd_auth_phase1_clt_teardown(void **state __attribute__((unused)))
 	free(out_bytes);
 
 	mcfd_auth_init_teardown(state);
+
+	return 0;
 }
 
 static void mcfd_auth_phase1_client_success(void)
@@ -506,7 +518,7 @@ static void mcfd_auth_phase1_client_normal(void **state __attribute__((unused)))
 	}
 }
 
-static void mcfd_auth_phase2_srv_setup(void **state __attribute__((unused)))
+static int mcfd_auth_phase2_srv_setup(void **state __attribute__((unused)))
 {
 	mcfd_auth_init_setup(state);
 
@@ -529,9 +541,11 @@ static void mcfd_auth_phase2_srv_setup(void **state __attribute__((unused)))
 
 	mcfd_auth_phase1_server_normal(state);
 	memset(out_bytes, EMPTY_PATTERN, MCFD_AUTH_PHASE2_SERVER_OUT_BYTES);
+
+	return 0;
 }
 
-static void mcfd_auth_phase2_srv_teardown(void **state __attribute__((unused)))
+static int mcfd_auth_phase2_srv_teardown(void **state __attribute__((unused)))
 {
 	mcfd_auth_free(ctx);
 
@@ -545,6 +559,8 @@ static void mcfd_auth_phase2_srv_teardown(void **state __attribute__((unused)))
 	free(out_bytes);
 
 	mcfd_auth_init_teardown(state);
+
+	return 0;
 }
 
 static void mcfd_auth_phase2_server_success(void)
@@ -758,7 +774,7 @@ static void mcfd_auth_phase2_server_normal(void **state __attribute__((unused)))
 	}
 }
 
-static void mcfd_auth_phase2_clt_setup(void **state __attribute__((unused)))
+static int mcfd_auth_phase2_clt_setup(void **state __attribute__((unused)))
 {
 	mcfd_auth_init_setup(state);
 
@@ -784,9 +800,11 @@ static void mcfd_auth_phase2_clt_setup(void **state __attribute__((unused)))
 	free(out_bytes);
 
 	memset(in_bytes, IN_PATTERN, MCFD_AUTH_PHASE2_CLIENT_IN_BYTES);
+
+	return 0;
 }
 
-static void mcfd_auth_phase2_clt_teardown(void **state __attribute__((unused)))
+static int mcfd_auth_phase2_clt_teardown(void **state __attribute__((unused)))
 {
 	mcfd_auth_free(ctx);
 
@@ -799,6 +817,8 @@ static void mcfd_auth_phase2_clt_teardown(void **state __attribute__((unused)))
 	free(in_bytes);
 
 	mcfd_auth_init_teardown(state);
+
+	return 0;
 }
 
 static void mcfd_auth_phase2_client_success(void)
@@ -923,7 +943,7 @@ unsigned char *key_cs;
 unsigned char *nonce_sc;
 unsigned char *nonce_cs;
 
-static void mcfd_auth_finish_setup(void **state __attribute__((unused)))
+static int mcfd_auth_finish_setup(void **state __attribute__((unused)))
 {
 	mcfd_auth_phase2_srv_setup(state);
 	mcfd_auth_phase2_server_normal(state);
@@ -943,9 +963,11 @@ static void mcfd_auth_finish_setup(void **state __attribute__((unused)))
 	nonce_cs = malloc(MCFD_NONCE_BYTES);
 	assert_non_null(nonce_cs);
 	memset(nonce_cs, EMPTY_PATTERN, MCFD_NONCE_BYTES);
+
+	return 0;
 }
 
-static void mcfd_auth_finish_teardown(void **state __attribute__((unused)))
+static int mcfd_auth_finish_teardown(void **state __attribute__((unused)))
 {
 	free(key_sc);
 	free(key_cs);
@@ -953,6 +975,8 @@ static void mcfd_auth_finish_teardown(void **state __attribute__((unused)))
 	free(nonce_cs);
 
 	mcfd_auth_phase2_srv_teardown(state);
+
+	return 0;
 }
 
 static void mcfd_auth_finish_success(void)
@@ -1260,144 +1284,144 @@ int run_unit_tests(void)
 {
 	int res = 0;
 
-	const UnitTest mcfd_auth_init_tests[] = {
-		unit_test_setup_teardown(mcfd_auth_init_in_null,
+	const struct CMUnitTest mcfd_auth_init_tests[] = {
+		cmocka_unit_test_setup_teardown(mcfd_auth_init_in_null,
 				mcfd_auth_init_setup, mcfd_auth_init_teardown),
-		unit_test_setup_teardown(mcfd_auth_init_noalloc,
+		cmocka_unit_test_setup_teardown(mcfd_auth_init_noalloc,
 				mcfd_auth_init_setup, mcfd_auth_init_teardown),
-		unit_test_setup_teardown(mcfd_auth_init_alloc_limited,
+		cmocka_unit_test_setup_teardown(mcfd_auth_init_alloc_limited,
 				mcfd_auth_init_setup, mcfd_auth_init_teardown),
-		unit_test_setup_teardown(mcfd_auth_init_normal,
+		cmocka_unit_test_setup_teardown(mcfd_auth_init_normal,
 				mcfd_auth_init_setup, mcfd_auth_init_teardown)
 	};
 
 	fprintf(stderr, "mcfd_auth_init:\n");
-	res |= run_tests(mcfd_auth_init_tests);
+	res |= cmocka_run_group_tests(mcfd_auth_init_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest mcfd_auth_phase1_server_tests[] = {
-		unit_test_setup_teardown(mcfd_auth_phase1_server_ctx_null,
+	const struct CMUnitTest mcfd_auth_phase1_server_tests[] = {
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_server_ctx_null,
 				mcfd_auth_phase1_srv_setup, mcfd_auth_phase1_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_server_out_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_server_out_null,
 				mcfd_auth_phase1_srv_setup, mcfd_auth_phase1_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_server_wrong_phase,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_server_wrong_phase,
 				mcfd_auth_phase1_srv_setup, mcfd_auth_phase1_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_server_normal,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_server_normal,
 				mcfd_auth_phase1_srv_setup, mcfd_auth_phase1_srv_teardown)
 	};
 
 	fprintf(stderr, "mcfd_auth_phase1_server:\n");
-	res |= run_tests(mcfd_auth_phase1_server_tests);
+	res |= cmocka_run_group_tests(mcfd_auth_phase1_server_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest mcfd_auth_phase1_client_tests[] = {
-		unit_test_setup_teardown(mcfd_auth_phase1_client_ctx_null,
+	const struct CMUnitTest mcfd_auth_phase1_client_tests[] = {
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_client_ctx_null,
 				mcfd_auth_phase1_clt_setup, mcfd_auth_phase1_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_client_cauth_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_client_cauth_null,
 				mcfd_auth_phase1_clt_setup, mcfd_auth_phase1_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_client_in_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_client_in_null,
 				mcfd_auth_phase1_clt_setup, mcfd_auth_phase1_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_client_out_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_client_out_null,
 				mcfd_auth_phase1_clt_setup, mcfd_auth_phase1_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_client_noalloc,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_client_noalloc,
 				mcfd_auth_phase1_clt_setup, mcfd_auth_phase1_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_client_alloc_limited,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_client_alloc_limited,
 				mcfd_auth_phase1_clt_setup, mcfd_auth_phase1_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_client_encrypt_fail,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_client_encrypt_fail,
 				mcfd_auth_phase1_clt_setup, mcfd_auth_phase1_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_client_wrong_phase,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_client_wrong_phase,
 				mcfd_auth_phase1_clt_setup, mcfd_auth_phase1_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase1_client_normal,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase1_client_normal,
 				mcfd_auth_phase1_clt_setup, mcfd_auth_phase1_clt_teardown)
 	};
 
 	fprintf(stderr, "mcfd_auth_phase1_client:\n");
-	res |= run_tests(mcfd_auth_phase1_client_tests);
+	res |= cmocka_run_group_tests(mcfd_auth_phase1_client_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest mcfd_auth_phase2_server_tests[] = {
-		unit_test_setup_teardown(mcfd_auth_phase2_server_ctx_null,
+	const struct CMUnitTest mcfd_auth_phase2_server_tests[] = {
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_ctx_null,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_server_cauth_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_cauth_null,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_server_in_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_in_null,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_server_out_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_out_null,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_server_noalloc,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_noalloc,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_server_alloc_limited,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_alloc_limited,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_server_challenge_fail,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_challenge_fail,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_server_decrypt_fail,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_decrypt_fail,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_server_encrypt_fail,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_encrypt_fail,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_server_wrong_phase,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_wrong_phase,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_server_normal,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_server_normal,
 				mcfd_auth_phase2_srv_setup, mcfd_auth_phase2_srv_teardown)
 	};
 
 	fprintf(stderr, "mcfd_auth_phase2_server:\n");
-	res |= run_tests(mcfd_auth_phase2_server_tests);
+	res |= cmocka_run_group_tests(mcfd_auth_phase2_server_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest mcfd_auth_phase2_client_tests[] = {
-		unit_test_setup_teardown(mcfd_auth_phase2_client_ctx_null,
+	const struct CMUnitTest mcfd_auth_phase2_client_tests[] = {
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_client_ctx_null,
 				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_client_cauth_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_client_cauth_null,
 				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_client_in_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_client_in_null,
 				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_client_noalloc,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_client_noalloc,
 				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_client_alloc_limited,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_client_alloc_limited,
 				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_client_challenge_fail,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_client_challenge_fail,
 				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_client_decrypt_fail,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_client_decrypt_fail,
 				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_client_wrong_phase,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_client_wrong_phase,
 				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown),
-		unit_test_setup_teardown(mcfd_auth_phase2_client_normal,
+		cmocka_unit_test_setup_teardown(mcfd_auth_phase2_client_normal,
 				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown)
 	};
 
 	fprintf(stderr, "mcfd_auth_phase2_client:\n");
-	res |= run_tests(mcfd_auth_phase2_client_tests);
+	res |= cmocka_run_group_tests(mcfd_auth_phase2_client_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest mcfd_auth_finish_tests[] = {
-		unit_test_setup_teardown(mcfd_auth_finish_ctx_null,
+	const struct CMUnitTest mcfd_auth_finish_tests[] = {
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_ctx_null,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_key1_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_key1_null,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_key2_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_key2_null,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_nonce1_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_nonce1_null,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_nonce2_null,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_nonce2_null,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_noalloc,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_noalloc,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_alloc_limited,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_alloc_limited,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_kdf1_fail,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_kdf1_fail,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_kdf2_fail,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_kdf2_fail,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_wrong_phase,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_wrong_phase,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_normal_server,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_normal_server,
 				mcfd_auth_finish_setup, mcfd_auth_finish_teardown),
-		unit_test_setup_teardown(mcfd_auth_finish_normal_client,
+		cmocka_unit_test_setup_teardown(mcfd_auth_finish_normal_client,
 				mcfd_auth_phase2_clt_setup, mcfd_auth_phase2_clt_teardown)
 	};
 
 	fprintf(stderr, "mcfd_auth_finish:\n");
-	res |= run_tests(mcfd_auth_finish_tests);
+	res |= cmocka_run_group_tests(mcfd_auth_finish_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
 	return res;

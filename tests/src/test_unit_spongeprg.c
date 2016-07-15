@@ -68,7 +68,7 @@ static int spongeprg_pf(pad *p, permutation *f, const size_t remaining_bits)
 	return mock_type(int);
 }
 
-static void spongeprg_init_setup(void **state __attribute__((unused)))
+static int spongeprg_init_setup(void **state __attribute__((unused)))
 {
 	f = calloc(1, sizeof(permutation));
 	assert_non_null(f);
@@ -84,12 +84,16 @@ static void spongeprg_init_setup(void **state __attribute__((unused)))
 	p->pf = spongeprg_pf;
 	p->rate = CREATE_RATE;
 	p->min_bit_len = CREATE_MIN_RATE;
+
+	return 0;
 }
 
-static void spongeprg_init_teardown(void **state __attribute__((unused)))
+static int spongeprg_init_teardown(void **state __attribute__((unused)))
 {
 	free(f);
 	free(p);
+
+	return 0;
 }
 
 static void spongeprg_init_f_null(void **state __attribute__((unused)))
@@ -338,7 +342,7 @@ static void spongeprg_init_bs_max(void **state __attribute__((unused)))
 static spongeprg *g = NULL;
 static unsigned char *in = NULL;
 
-static void spongeprg_feed_setup(void **state __attribute__((unused)))
+static int spongeprg_feed_setup(void **state __attribute__((unused)))
 {
 	f = calloc(1, sizeof(permutation));
 	assert_non_null(f);
@@ -361,14 +365,18 @@ static void spongeprg_feed_setup(void **state __attribute__((unused)))
 	in = calloc(IN_SIZE, 1);
 	assert_non_null(in);
 	memset(in, IN_PATTERN, IN_SIZE);
+
+	return 0;
 }
 
-static void spongeprg_feed_teardown(void **state __attribute__((unused)))
+static int spongeprg_feed_teardown(void **state __attribute__((unused)))
 {
 	free(in);
 	spongeprg_free(g);
 	free(f);
 	free(p);
+
+	return 0;
 }
 
 static void spongeprg_feed_g_null(void **state __attribute__((unused)))
@@ -419,78 +427,78 @@ int run_unit_tests(void)
 {
 	int res = 0;
 
-	const UnitTest spongeprg_init_tests[] = {
-		unit_test_setup_teardown(spongeprg_init_f_null, spongeprg_init_setup,
+	const struct CMUnitTest spongeprg_init_tests[] = {
+		cmocka_unit_test_setup_teardown(spongeprg_init_f_null, spongeprg_init_setup,
 				spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_p_null, spongeprg_init_setup,
+		cmocka_unit_test_setup_teardown(spongeprg_init_p_null, spongeprg_init_setup,
 				spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_rate_zero, spongeprg_init_setup,
+		cmocka_unit_test_setup_teardown(spongeprg_init_rate_zero, spongeprg_init_setup,
 				spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_width_zero,
+		cmocka_unit_test_setup_teardown(spongeprg_init_width_zero,
 				spongeprg_init_setup, spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_bs_zero, spongeprg_init_setup,
+		cmocka_unit_test_setup_teardown(spongeprg_init_bs_zero, spongeprg_init_setup,
 				spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_rate_zero_width_zero,
+		cmocka_unit_test_setup_teardown(spongeprg_init_rate_zero_width_zero,
 				spongeprg_init_setup, spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_rate_gt_width,
+		cmocka_unit_test_setup_teardown(spongeprg_init_rate_gt_width,
 				spongeprg_init_setup, spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_rate_eq_width,
+		cmocka_unit_test_setup_teardown(spongeprg_init_rate_eq_width,
 				spongeprg_init_setup, spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_rate_ne_prate,
+		cmocka_unit_test_setup_teardown(spongeprg_init_rate_ne_prate,
 				spongeprg_init_setup, spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_rate_lt_minrate,
+		cmocka_unit_test_setup_teardown(spongeprg_init_rate_lt_minrate,
 				spongeprg_init_setup, spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_rate_eq_minrate,
+		cmocka_unit_test_setup_teardown(spongeprg_init_rate_eq_minrate,
 				spongeprg_init_setup, spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_bs_gt_maxbs,
+		cmocka_unit_test_setup_teardown(spongeprg_init_bs_gt_maxbs,
 				spongeprg_init_setup, spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_rate_odd, spongeprg_init_setup,
+		cmocka_unit_test_setup_teardown(spongeprg_init_rate_odd, spongeprg_init_setup,
 				spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_width_odd, spongeprg_init_setup,
+		cmocka_unit_test_setup_teardown(spongeprg_init_width_odd, spongeprg_init_setup,
 				spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_noalloc, spongeprg_init_setup,
+		cmocka_unit_test_setup_teardown(spongeprg_init_noalloc, spongeprg_init_setup,
 				spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_alloc_limited,
+		cmocka_unit_test_setup_teardown(spongeprg_init_alloc_limited,
 				spongeprg_init_setup, spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_normal, spongeprg_init_setup,
+		cmocka_unit_test_setup_teardown(spongeprg_init_normal, spongeprg_init_setup,
 				spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_rate_max, spongeprg_init_setup,
+		cmocka_unit_test_setup_teardown(spongeprg_init_rate_max, spongeprg_init_setup,
 				spongeprg_init_teardown),
-		unit_test_setup_teardown(spongeprg_init_bs_max, spongeprg_init_setup,
+		cmocka_unit_test_setup_teardown(spongeprg_init_bs_max, spongeprg_init_setup,
 				spongeprg_init_teardown)
 	};
 
 	fprintf(stderr, "spongeprg_init:\n");
-	res |= run_tests(spongeprg_init_tests);
+	res |= cmocka_run_group_tests(spongeprg_init_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest spongeprg_feed_tests[] = {
-		unit_test_setup_teardown(spongeprg_feed_g_null,
+	const struct CMUnitTest spongeprg_feed_tests[] = {
+		cmocka_unit_test_setup_teardown(spongeprg_feed_g_null,
 				spongeprg_feed_setup, spongeprg_feed_teardown),
-		unit_test_setup_teardown(spongeprg_feed_in_null,
+		cmocka_unit_test_setup_teardown(spongeprg_feed_in_null,
 				spongeprg_feed_setup, spongeprg_feed_teardown),
-		unit_test_setup_teardown(spongeprg_feed_ilen_zero,
+		cmocka_unit_test_setup_teardown(spongeprg_feed_ilen_zero,
 				spongeprg_feed_setup, spongeprg_feed_teardown),
-		unit_test_setup_teardown(spongeprg_feed_in_null_ilen_zero,
+		cmocka_unit_test_setup_teardown(spongeprg_feed_in_null_ilen_zero,
 				spongeprg_feed_setup, spongeprg_feed_teardown),
-		unit_test_setup_teardown(spongeprg_feed_xor_fail,
+		cmocka_unit_test_setup_teardown(spongeprg_feed_xor_fail,
 				spongeprg_feed_setup, spongeprg_feed_teardown),
-		unit_test_setup_teardown(spongeprg_feed_pf_fail,
+		cmocka_unit_test_setup_teardown(spongeprg_feed_pf_fail,
 				spongeprg_feed_setup, spongeprg_feed_teardown),
-		unit_test_setup_teardown(spongeprg_feed_get_fail,
+		cmocka_unit_test_setup_teardown(spongeprg_feed_get_fail,
 				spongeprg_feed_setup, spongeprg_feed_teardown),
-		unit_test_setup_teardown(spongeprg_feed_normal,
+		cmocka_unit_test_setup_teardown(spongeprg_feed_normal,
 				spongeprg_feed_setup, spongeprg_feed_teardown),
-		unit_test_setup_teardown(spongeprg_feed_ilen_lt_bs,
+		cmocka_unit_test_setup_teardown(spongeprg_feed_ilen_lt_bs,
 				spongeprg_feed_setup, spongeprg_feed_teardown),
-		unit_test_setup_teardown(spongeprg_feed_ilen_eq_bs,
+		cmocka_unit_test_setup_teardown(spongeprg_feed_ilen_eq_bs,
 				spongeprg_feed_setup, spongeprg_feed_teardown),
-		unit_test_setup_teardown(spongeprg_feed_ilen_gt_bs,
+		cmocka_unit_test_setup_teardown(spongeprg_feed_ilen_gt_bs,
 				spongeprg_feed_setup, spongeprg_feed_teardown)
 	};
 
 	fprintf(stderr, "spongeprg_feed:\n");
-	res |= run_tests(spongeprg_feed_tests);
+	res |= cmocka_run_group_tests(spongeprg_feed_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
 	return res;

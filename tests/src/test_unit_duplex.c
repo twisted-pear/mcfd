@@ -25,7 +25,7 @@
 static permutation *f = NULL;
 static pad *p = NULL;
 
-static void duplex_init_setup(void **state __attribute__((unused)))
+static int duplex_init_setup(void **state __attribute__((unused)))
 {
 	f = calloc(1, sizeof(permutation));
 	assert_non_null(f);
@@ -37,12 +37,16 @@ static void duplex_init_setup(void **state __attribute__((unused)))
 
 	p->rate = CREATE_RATE;
 	p->min_bit_len = CREATE_MIN_RATE;
+
+	return 0;
 }
 
-static void duplex_init_teardown(void **state __attribute__((unused)))
+static int duplex_init_teardown(void **state __attribute__((unused)))
 {
 	free(f);
 	free(p);
+
+	return 0;
 }
 
 static void duplex_init_f_null(void **state __attribute__((unused)))
@@ -319,7 +323,7 @@ static int duplex_duplexing_pf(pad *p, permutation *f, const size_t remaining_bi
 	return mock_type(int);
 }
 
-static void duplex_duplexing_setup(void **state __attribute__((unused)))
+static int duplex_duplexing_setup(void **state __attribute__((unused)))
 {
 	duplex_duplexing_order = 0;
 
@@ -354,15 +358,19 @@ static void duplex_duplexing_setup(void **state __attribute__((unused)))
 	assert_non_null(outbuf);
 
 	memset(outbuf, OUTBUF_PATTERN, CREATE_RATE / 8);
+
+	return 0;
 }
 
-static void duplex_duplexing_teardown(void **state __attribute__((unused)))
+static int duplex_duplexing_teardown(void **state __attribute__((unused)))
 {
 	free(f);
 	free(p);
 	duplex_free(dp);
 	free(inbuf);
 	free(outbuf);
+
+	return 0;
 }
 
 static void duplex_duplexing_success(void)
@@ -936,87 +944,87 @@ int run_unit_tests(void)
 {
 	int res = 0;
 
-	const UnitTest duplex_init_tests[] = {
-		unit_test_setup_teardown(duplex_init_f_null, duplex_init_setup,
+	const struct CMUnitTest duplex_init_tests[] = {
+		cmocka_unit_test_setup_teardown(duplex_init_f_null, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_p_null, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_p_null, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_rate_zero, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_rate_zero, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_width_zero, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_width_zero, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_rate_zero_width_zero,
+		cmocka_unit_test_setup_teardown(duplex_init_rate_zero_width_zero,
 				duplex_init_setup, duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_rate_gt_width, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_rate_gt_width, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_rate_eq_width, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_rate_eq_width, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_rate_ne_prate, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_rate_ne_prate, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_rate_lt_minrate, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_rate_lt_minrate, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_rate_eq_minrate, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_rate_eq_minrate, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_rate_odd, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_rate_odd, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_width_odd, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_width_odd, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_noalloc, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_noalloc, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_alloc_limited, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_alloc_limited, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_normal, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_normal, duplex_init_setup,
 				duplex_init_teardown),
-		unit_test_setup_teardown(duplex_init_rate_max, duplex_init_setup,
+		cmocka_unit_test_setup_teardown(duplex_init_rate_max, duplex_init_setup,
 				duplex_init_teardown)
 	};
 
 	fprintf(stderr, "duplex_init:\n");
-	res |= run_tests(duplex_init_tests);
+	res |= cmocka_run_group_tests(duplex_init_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
-	const UnitTest duplex_duplexing_tests[] = {
-		unit_test_setup_teardown(duplex_duplexing_dp_null,
+	const struct CMUnitTest duplex_duplexing_tests[] = {
+		cmocka_unit_test_setup_teardown(duplex_duplexing_dp_null,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_in_null_ilen_nonzero,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_in_null_ilen_nonzero,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_in_null_ilen_zero,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_in_null_ilen_zero,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_in_nonnull_ilen_zero,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_in_nonnull_ilen_zero,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_out_null_olen_nonzero,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_out_null_olen_nonzero,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_out_null_olen_zero,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_out_null_olen_zero,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_out_nonnull_olen_zero,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_out_nonnull_olen_zero,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_ilen_gt_drate,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_ilen_gt_drate,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_ilen_1_left,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_ilen_1_left,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_ilen_max,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_ilen_max,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_olen_gt_rate,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_olen_gt_rate,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_olen_1_left,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_olen_1_left,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_olen_max,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_olen_max,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_xor_fail,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_xor_fail,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_pf_fail,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_pf_fail,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_get_fail,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_get_fail,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_diff_ilens,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_diff_ilens,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test_setup_teardown(duplex_duplexing_diff_olens,
+		cmocka_unit_test_setup_teardown(duplex_duplexing_diff_olens,
 				duplex_duplexing_setup, duplex_duplexing_teardown),
-		unit_test(duplex_duplexing_diff_rates)
+		cmocka_unit_test(duplex_duplexing_diff_rates)
 	};
 
 	fprintf(stderr, "duplex_duplexing:\n");
-	res |= run_tests(duplex_duplexing_tests);
+	res |= cmocka_run_group_tests(duplex_duplexing_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
 	return res;

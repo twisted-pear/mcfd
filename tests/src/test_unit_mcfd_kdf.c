@@ -107,7 +107,7 @@ static sponge *sp;
 
 static int order = 0;
 
-static void mcfd_kdf_setup(void **state __attribute__((unused)))
+static int mcfd_kdf_setup(void **state __attribute__((unused)))
 {
 	pass = calloc(PASS_LEN, 1);
 	assert_non_null(pass);
@@ -138,9 +138,11 @@ static void mcfd_kdf_setup(void **state __attribute__((unused)))
 	sp->p = p;
 	sp->rate = RATE;
 	sp->internal = &order;
+
+	return 0;
 }
 
-static void mcfd_kdf_teardown(void **state __attribute__((unused)))
+static int mcfd_kdf_teardown(void **state __attribute__((unused)))
 {
 	size_t i;
 	for (i = 0; i < PASS_LEN; i++) {
@@ -157,6 +159,8 @@ static void mcfd_kdf_teardown(void **state __attribute__((unused)))
 	free(f);
 	free(p);
 	free(sp);
+
+	return 0;
 }
 
 static void mcfd_kdf_success(size_t pass_len, bool use_salt, size_t iterations,
@@ -546,39 +550,39 @@ int run_unit_tests(void)
 {
 	int res = 0;
 
-	const UnitTest mcfd_kdf_tests[] = {
-		unit_test_setup_teardown(mcfd_kdf_pass_null,
+	const struct CMUnitTest mcfd_kdf_tests[] = {
+		cmocka_unit_test_setup_teardown(mcfd_kdf_pass_null,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_plen_zero,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_plen_zero,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_salt_null,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_salt_null,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_iter_zero,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_iter_zero,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_key_null,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_key_null,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_kbits_zero,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_kbits_zero,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_kbits_odd,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_kbits_odd,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_f_init_fail,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_f_init_fail,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_p_init_fail,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_p_init_fail,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_sp_init_fail,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_sp_init_fail,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_absorb_fail,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_absorb_fail,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_absorb_final_fail,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_absorb_final_fail,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_squeeze_fail,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_squeeze_fail,
 				mcfd_kdf_setup, mcfd_kdf_teardown),
-		unit_test_setup_teardown(mcfd_kdf_normal,
+		cmocka_unit_test_setup_teardown(mcfd_kdf_normal,
 				mcfd_kdf_setup, mcfd_kdf_teardown)
 	};
 
 	fprintf(stderr, "mcfd_kdf:\n");
-	res |= run_tests(mcfd_kdf_tests);
+	res |= cmocka_run_group_tests(mcfd_kdf_tests, NULL, NULL);
 	fprintf(stderr, "\n");
 
 	return res;
