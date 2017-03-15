@@ -1,3 +1,5 @@
+UDP support
+rekeying (use TCP URG maybe?)
 exec after fork?
 add section about deps to readme, also list optional deps for test cases and stuff
 add actual documentation
